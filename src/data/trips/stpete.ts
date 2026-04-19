@@ -69,7 +69,8 @@ export const stpete: Trip = {
       title: 'Wedding — Tyler & Yui',
       details:
         'Sunday, Sept 6, 2026 · 11:30 AM – 3:00 PM · Ceremony & brunch reception · ' +
-        'Red Mesa Events · 128 3rd Street South, St. Petersburg, FL 33701 · Dress code TBD',
+        'Red Mesa Events · 128 3rd Street South, St. Petersburg, FL 33701 · ' +
+        'Dress code: Cocktail / business casual — brunch vibes',
       link: 'https://www.zola.com/wedding/yuiandtyler',
       when: '2026-09-06',
     },
@@ -110,22 +111,25 @@ export const stpete: Trip = {
     },
     {
       date: '2026-09-05',
-      title: 'Pre-wedding day',
+      title: 'Day trip: Orlando — Dad’s side of the family',
       items: [
-        { title: 'Morning off / beach or pool' },
-        { title: 'Rehearsal dinner (if invited)', notes: 'Confirm with Tyler & Yui.' },
+        { time: '9:30 AM', title: 'Leave Indian Rocks Beach for Orlando', notes: '~2 hr drive via I-4. Everyone going.' },
+        { time: '11:30 AM', title: 'Arrive · visit with the Montez family in Orlando', notes: 'Address TBD — confirm with Dad (Tony).' },
+        { title: 'Cookout (tentative)', notes: 'Might have one — confirm with Dad.' },
+        { time: '5:00 PM', title: 'Head back to Indian Rocks Beach', notes: 'Earlier the better — wedding is tomorrow at 11:30 AM.' },
+        { time: '7:30 PM', title: 'Back at the house · low-key dinner' },
       ],
     },
     {
       date: '2026-09-06',
       title: 'Wedding day — Tyler & Yui 💍',
       items: [
-        { time: '9:30 AM', title: 'Get ready at the house' },
+        { time: '9:30 AM', title: 'Get ready at the house', notes: 'Dress code: cocktail / business casual — brunch vibes.' },
         {
           time: '10:30 AM',
           title: 'Leave for Red Mesa Events',
           address: '128 3rd Street South, St. Petersburg, FL 33701',
-          notes: '~25 min drive from Clearwater. Budget extra for parking.',
+          notes: '~25 min drive from Indian Rocks Beach. Budget extra for parking.',
         },
         { time: '11:30 AM', title: 'Ceremony at Red Mesa Events' },
         { time: '12:00 PM', title: 'Brunch reception' },
@@ -232,7 +236,7 @@ export const stpete: Trip = {
     // Wedding
     { id: 'ck-we-1', title: 'RSVP on Zola', category: 'Wedding', done: false, notes: 'zola.com/wedding/yuiandtyler · password: momo' },
     { id: 'ck-we-2', title: 'Confirm ceremony & reception time + venue', category: 'Wedding', done: true, notes: 'Sun Sept 6 · 11:30 AM – 3:00 PM · Red Mesa Events · 128 3rd St S, St. Petersburg FL 33701' },
-    { id: 'ck-we-3', title: 'Confirm dress code', category: 'Wedding', done: false },
+    { id: 'ck-we-3', title: 'Confirm dress code', category: 'Wedding', done: true, notes: 'Cocktail / business casual — brunch vibes.' },
     { id: 'ck-we-4', title: 'Babysitting plan for Tatum', category: 'Wedding', done: false },
     { id: 'ck-we-5', title: 'Transportation to/from venue', category: 'Wedding', done: false },
     { id: 'ck-we-6', title: 'Buy wedding gift', category: 'Wedding', done: false },
@@ -241,6 +245,7 @@ export const stpete: Trip = {
     { id: 'ck-ad-1', title: 'Save Beach Time Rentals contact', category: 'Admin', done: true, notes: 'RES-21753 · text 727 565 2958 · office 800 691 8183' },
     { id: 'ck-ad-2', title: 'Share emergency contact list', category: 'Admin', done: false, notes: 'Tap "Copy everyone" on the People page to paste into the group chat.' },
     { id: 'ck-ad-3', title: 'Sign Short Term Rental Agreement', category: 'Admin', done: false, notes: 'Adobe Acrobat Sign link emailed by Beach Time Rentals.' },
+    { id: 'ck-ad-4', title: 'Confirm Sat Orlando visit plans with Dad', category: 'Admin', done: false, notes: 'Address, arrival time, cookout vs not. ~2 hr each way.' },
   ],
 
   budget: [
