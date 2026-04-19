@@ -27,16 +27,16 @@ export const stpete: Trip = {
     notes:
       'Sleeps 9 · 4 beds · 3 bath.\n\n' +
       'Draft bed plan (swap freely):\n' +
-      '• Master — You + Wife + Tatum (pack & play)\n' +
-      '• Bedroom 2 — Mom + Dad\n' +
-      '• Bedroom 3 — Father-in-law + Mother-in-law\n' +
-      '• Bedroom 4 — Sister-in-law (if joining)\n\n' +
+      '• Master — Toni + Morgan + Tatum (pack & play)\n' +
+      '• Bedroom 2 — Leah + Tony (Montez)\n' +
+      '• Bedroom 3 — Laura + Mark (Goodwin)\n' +
+      '• Bedroom 4 — Mikayla (if joining)\n\n' +
       'Total $3,547.50 · ~$1,182.33 per couple (3 couples).\n' +
       '$1,110 paid · $2,437.50 remaining (due Aug 4, 2026).',
     bookingLink: 'https://www.beachtimerentals.com/clearwater-vacation-rentals/exclusive-isla-bonita',
-    confirmation: 'TBD',
-    hostName: 'Beachtime Rentals',
-    hostPhone: 'TBD',
+    confirmation: 'RES-21753',
+    hostName: 'Beach Time Rentals Suncoast',
+    hostPhone: '+1 727 565 2958',
   },
 
   bookings: [
@@ -140,20 +140,22 @@ export const stpete: Trip = {
   ],
 
   people: [
-    { id: 'p-you', name: 'You', role: 'Organizer', phone: 'TBD' },
-    { id: 'p-wife', name: 'Wife', role: 'Family', phone: 'TBD' },
-    { id: 'p-tatum', name: 'Tatum', role: 'Daughter (infant)' },
-    { id: 'p-fil', name: 'Father-in-law', role: 'Family', phone: 'TBD' },
-    { id: 'p-mil', name: 'Mother-in-law', role: 'Family', phone: 'TBD' },
-    { id: 'p-mom', name: 'Mom', role: 'Family', phone: 'TBD' },
-    { id: 'p-dad', name: 'Dad', role: 'Family', phone: 'TBD' },
-    { id: 'p-sil', name: 'Sister-in-law', role: 'Tentative', phone: 'TBD' },
+    { id: 'p-toni', name: 'Toni Montez', role: 'Organizer', phone: 'TBD' },
+    { id: 'p-morgan', name: 'Morgan Montez', role: 'Wife', phone: 'TBD' },
+    { id: 'p-tatum', name: 'Tatum Montez', role: 'Daughter (infant)' },
+    { id: 'p-leah', name: 'Leah Montez', role: 'Mom', phone: 'TBD' },
+    { id: 'p-tony', name: 'Tony Montez', role: 'Dad', phone: 'TBD' },
+    { id: 'p-laura', name: 'Laura Goodwin', role: 'Mother-in-law', phone: 'TBD' },
+    { id: 'p-mark', name: 'Mark Goodwin', role: 'Father-in-law', phone: 'TBD' },
+    { id: 'p-mikayla', name: 'Mikayla Goodwin', role: 'Sister-in-law · Tentative', phone: 'TBD' },
   ],
 
   contacts: [
     { id: 'c-emerg', label: 'Emergency (US)', value: '911', kind: 'phone' },
     { id: 'c-couple', label: 'Tyler & Yui — wedding site', value: 'https://www.zola.com/wedding/yuiandtyler', kind: 'url', notes: 'Password: momo' },
-    { id: 'c-rental', label: 'Beachtime Rentals (host)', value: 'TBD', kind: 'phone' },
+    { id: 'c-rental-text', label: 'Beach Time Rentals — text line', value: '+1 727 565 2958', kind: 'phone', notes: 'Reservation RES-21753. Preferred for quick questions.' },
+    { id: 'c-rental-office', label: 'Beach Time Rentals — office', value: '+1 800 691 8183', kind: 'phone' },
+    { id: 'c-rental-email', label: 'Beach Time Rentals — email', value: 'customerservice@beachtimerentals.com', kind: 'text' },
     { id: 'c-airport', label: 'Tampa International Airport', value: '+1 813 870 8700', kind: 'phone' },
   ],
 
@@ -210,8 +212,9 @@ export const stpete: Trip = {
     { id: 'ck-we-6', title: 'Buy wedding gift', category: 'Wedding', done: false },
 
     // Admin
-    { id: 'ck-ad-1', title: 'Save Beachtime Rentals contact', category: 'Admin', done: false },
+    { id: 'ck-ad-1', title: 'Save Beach Time Rentals contact', category: 'Admin', done: true, notes: 'RES-21753 · text 727 565 2958 · office 800 691 8183' },
     { id: 'ck-ad-2', title: 'Share emergency contact list', category: 'Admin', done: false },
+    { id: 'ck-ad-3', title: 'Sign Short Term Rental Agreement', category: 'Admin', done: false, notes: 'Adobe Acrobat Sign link emailed by Beach Time Rentals.' },
   ],
 
   budget: [
