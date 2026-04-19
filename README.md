@@ -14,7 +14,7 @@ Vite + React 19 + TypeScript + Tailwind v4 + React Router 7. All content lives i
 
 ## How to edit a trip
 
-1. Open `src/data/trips/<slug>.ts`.
+1. Open `src/data/trips/<slug>.ts` (e.g. `stpete.ts`).
 2. Edit the `Trip` object — dates, stay, bookings, itinerary, people, checklist, budget, contacts.
 3. Commit and push. Vercel (or any static host) rebuilds and deploys.
 
@@ -22,12 +22,12 @@ Types live in `src/types/trip.ts` — your editor will guide you through the sha
 
 ## Add a new trip
 
-1. Copy `src/data/trips/tuscany.ts` to a new file like `src/data/trips/mexico.ts`.
+1. Copy `src/data/trips/stpete.ts` to a new file like `src/data/trips/mexico.ts`.
 2. Change the `slug` and fill in the content.
 3. Register it in `src/data/trips/index.ts`:
    ```ts
    import { mexico } from './mexico'
-   export const trips = { [tuscany.slug]: tuscany, [mexico.slug]: mexico }
+   export const trips = { [stpete.slug]: stpete, [mexico.slug]: mexico }
    ```
 4. Visit `/<slug>` — e.g. `/mexico`.
 
