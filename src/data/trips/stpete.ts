@@ -52,7 +52,9 @@ export const stpete: Trip = {
       id: 'wedding',
       kind: 'activity',
       title: 'Wedding — Tyler & Yui',
-      details: 'Sunday, Sept 6, 2026 · St. Petersburg, FL · Time & venue TBD · Dress code TBD',
+      details:
+        'Sunday, Sept 6, 2026 · 11:30 AM – 3:00 PM · Ceremony & brunch reception · ' +
+        'Red Mesa Events · 128 3rd Street South, St. Petersburg, FL 33701 · Dress code TBD',
       link: 'https://www.zola.com/wedding/yuiandtyler',
       when: '2026-09-06',
     },
@@ -103,10 +105,16 @@ export const stpete: Trip = {
       date: '2026-09-06',
       title: 'Wedding day — Tyler & Yui 💍',
       items: [
-        { title: 'Get ready at the house' },
-        { title: 'Head to ceremony', notes: 'Confirm start time, address, and dress code via Zola.', link: 'https://www.zola.com/wedding/yuiandtyler' },
-        { title: 'Ceremony' },
-        { title: 'Reception' },
+        { time: '9:30 AM', title: 'Get ready at the house' },
+        {
+          time: '10:30 AM',
+          title: 'Leave for Red Mesa Events',
+          address: '128 3rd Street South, St. Petersburg, FL 33701',
+          notes: '~25 min drive from Clearwater. Budget extra for parking.',
+        },
+        { time: '11:30 AM', title: 'Ceremony at Red Mesa Events' },
+        { time: '12:00 PM', title: 'Brunch reception' },
+        { time: '3:00 PM', title: 'Reception ends · head back to the house' },
         { title: 'Babysitting plan for Tatum', notes: 'Decide ahead: sitter at the house vs rotating with family.' },
       ],
     },
@@ -205,7 +213,7 @@ export const stpete: Trip = {
 
     // Wedding
     { id: 'ck-we-1', title: 'RSVP on Zola', category: 'Wedding', done: false, notes: 'zola.com/wedding/yuiandtyler · password: momo' },
-    { id: 'ck-we-2', title: 'Confirm ceremony & reception time + venue', category: 'Wedding', done: false },
+    { id: 'ck-we-2', title: 'Confirm ceremony & reception time + venue', category: 'Wedding', done: true, notes: 'Sun Sept 6 · 11:30 AM – 3:00 PM · Red Mesa Events · 128 3rd St S, St. Petersburg FL 33701' },
     { id: 'ck-we-3', title: 'Confirm dress code', category: 'Wedding', done: false },
     { id: 'ck-we-4', title: 'Babysitting plan for Tatum', category: 'Wedding', done: false },
     { id: 'ck-we-5', title: 'Transportation to/from venue', category: 'Wedding', done: false },
