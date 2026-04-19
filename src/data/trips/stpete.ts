@@ -4,7 +4,7 @@ import heroImage from '../../assets/hero.png'
 export const stpete: Trip = {
   slug: 'stpete',
   name: 'St. Pete Family Trip',
-  location: 'St. Petersburg / Clearwater, Florida',
+  location: 'Indian Rocks Beach, FL',
   startDate: '2026-09-03',
   endDate: '2026-09-08',
   heroImage,
@@ -13,24 +13,36 @@ export const stpete: Trip = {
 
   stay: {
     name: 'Exclusive Isla Bonita',
-    address: 'Clearwater, FL (exact address TBD on check-in day)',
-    checkIn: 'September 3, 2026 · time TBD',
-    checkOut: 'September 8, 2026 · time TBD',
+    address: '2718 Gulf Blvd, Indian Rocks Beach, FL',
+    checkIn: 'September 3, 2026 · 4:00 PM',
+    checkOut: 'September 8, 2026 · 10:00 AM',
     wifiSsid: 'TBD',
     wifiPassword: 'TBD',
     amenities: [
-      'Sleeps 9',
-      '4 bedrooms',
-      '3 bathrooms',
-      'Walkable to Clearwater beach area',
+      'Max 12 guests',
+      '4 bedrooms · 3 bathrooms',
+      '2-car parking (max)',
+      'Pool (heat not guaranteed)',
+      'On Gulf Blvd in Indian Rocks Beach',
     ],
     notes:
-      'Sleeps 9 · 4 beds · 3 bath.\n\n' +
+      '5 nights · Check-in 4:00 PM Sept 3 · Check-out 10:00 AM Sept 8.\n\n' +
       'Draft bed plan (swap freely):\n' +
       '• Master — Toni + Morgan + Tatum (pack & play)\n' +
       '• Bedroom 2 — Leah + Tony (Montez)\n' +
       '• Bedroom 3 — Laura + Mark (Goodwin)\n' +
       '• Bedroom 4 — Mikayla (if joining)\n\n' +
+      '🚗 Only 2 cars allowed on the property. Plan carpools / rideshares accordingly.\n\n' +
+      'House rules (from the rental agreement):\n' +
+      '• No parties or events — immediate eviction\n' +
+      '• No smoking — $1,000 fee\n' +
+      '• No pets — $395 fee\n' +
+      '• Quiet hours after 10 PM\n' +
+      '• Exterior security cameras in use\n' +
+      '• Pool heat not guaranteed in cooler weather\n' +
+      '• Starter toiletries only — bring your own supply\n' +
+      '• All payments non-refundable\n' +
+      '• Excessive cleaning: $150/hour\n\n' +
       'Total $3,547.50 · ~$1,182.33 per couple (3 couples).\n' +
       '$1,110 paid · $2,437.50 remaining (due Aug 4, 2026).',
     bookingLink: 'https://www.beachtimerentals.com/clearwater-vacation-rentals/exclusive-isla-bonita',
@@ -44,8 +56,11 @@ export const stpete: Trip = {
       id: 'stay',
       kind: 'stay',
       title: 'Airbnb — Exclusive Isla Bonita',
-      details: 'Sept 3 → 8, 2026 · Sleeps 9 · 4 bed / 3 bath',
+      details:
+        '2718 Gulf Blvd, Indian Rocks Beach, FL · Sept 3 → 8 (5 nights) · ' +
+        'Check-in 4:00 PM · Check-out 10:00 AM · Max 12 guests · 2-car parking · RES-21753',
       link: 'https://www.beachtimerentals.com/clearwater-vacation-rentals/exclusive-isla-bonita',
+      confirmation: 'RES-21753',
       when: '2026-09-03',
     },
     {
@@ -79,9 +94,9 @@ export const stpete: Trip = {
       date: '2026-09-03',
       title: 'Arrival day',
       items: [
-        { title: 'Everyone arrives in St. Pete / Clearwater', notes: 'Share ETAs in the group chat so we can coordinate pickups.' },
-        { title: 'Check in at Exclusive Isla Bonita', address: 'Clearwater, FL (exact address TBD)' },
-        { title: 'Welcome dinner at the house', notes: 'Keep it easy — grocery run after check-in.' },
+        { title: 'Everyone arrives in Tampa / St. Pete', notes: 'Share ETAs in the group chat so we can coordinate pickups.' },
+        { time: '4:00 PM', title: 'Check in at Exclusive Isla Bonita', address: '2718 Gulf Blvd, Indian Rocks Beach, FL', notes: 'Remember: only 2 cars allowed on the property.' },
+        { title: 'Welcome dinner at the house', notes: 'Grocery run after check-in. Starter toiletries only — bring your own.' },
       ],
     },
     {
@@ -131,15 +146,16 @@ export const stpete: Trip = {
       date: '2026-09-08',
       title: 'Departure',
       items: [
-        { title: 'Pack up and tidy' },
-        { title: 'Check out' },
+        { time: '8:00 AM', title: 'Pack up and tidy · take out trash' },
+        { time: '10:00 AM', title: 'Check out' },
         { title: 'Drop off rental car · head home' },
       ],
     },
   ],
 
   thingsToDo: [
-    { id: 'td-1', name: 'Clearwater Beach', category: 'Beach', address: 'Clearwater Beach, FL', url: 'https://maps.google.com/?q=Clearwater+Beach', notes: 'Classic white-sand beach right near the rental.' },
+    { id: 'td-0', name: 'Indian Rocks Beach (our beach)', category: 'Beach', address: 'Indian Rocks Beach, FL', url: 'https://maps.google.com/?q=Indian+Rocks+Beach', notes: 'Right outside the rental — walk across Gulf Blvd.' },
+    { id: 'td-1', name: 'Clearwater Beach', category: 'Beach', address: 'Clearwater Beach, FL', url: 'https://maps.google.com/?q=Clearwater+Beach', notes: '~10 min north. Busier, classic white sand.' },
     { id: 'td-2', name: 'Pier 60 Sunset', category: 'Sightseeing', address: 'Pier 60, Clearwater Beach', url: 'https://maps.google.com/?q=Pier+60+Clearwater', notes: 'Sunset festival most evenings — walkable from the beach.' },
     { id: 'td-3', name: 'Clearwater Marine Aquarium', category: 'Family', address: '249 Windward Passage, Clearwater', url: 'https://www.cmaquarium.org/', notes: 'Good rainy-day / baby-friendly option.' },
     { id: 'td-4', name: 'St. Pete Pier', category: 'Sightseeing', address: '600 2nd Ave NE, St. Petersburg', url: 'https://stpetepier.org/', notes: 'Restaurants, splash pad, playground, views.' },
@@ -181,17 +197,19 @@ export const stpete: Trip = {
     // Stay
     { id: 'ck-st-1', title: 'Confirm Airbnb booking', category: 'Stay', done: true },
     { id: 'ck-st-2', title: 'Make final $2,437.50 payment (due Aug 4)', category: 'Stay', done: false },
-    { id: 'ck-st-3', title: 'Confirm check-in time + entry codes', category: 'Stay', done: false },
+    { id: 'ck-st-3', title: 'Get entry codes from Beach Time Rentals', category: 'Stay', done: false, notes: 'Check-in confirmed for 4:00 PM Sept 3 · codes usually emailed a few days prior.' },
     { id: 'ck-st-4', title: 'Share bed plan with the group', category: 'Stay', done: false },
     { id: 'ck-st-5', title: 'Confirm pack & play / crib', category: 'Stay', done: false },
-    { id: 'ck-st-6', title: 'Share address + Wi-Fi with everyone', category: 'Stay', done: false },
+    { id: 'ck-st-6', title: 'Share address + Wi-Fi with everyone', category: 'Stay', done: false, notes: 'Address: 2718 Gulf Blvd, Indian Rocks Beach · Wi-Fi arrives with check-in info.' },
+    { id: 'ck-st-7', title: 'Pack own toiletries (property only provides starter)', category: 'Stay', done: false },
 
     // Transport
-    { id: 'ck-tr-1', title: 'Decide rental car count', category: 'Transport', done: true, notes: 'Decision: one shared rental at TPA.' },
+    { id: 'ck-tr-1', title: 'Decide rental car count', category: 'Transport', done: true, notes: 'Decision: one shared rental at TPA. Only 2 cars allowed on property, so stay lean.' },
     { id: 'ck-tr-2', title: 'Book rental car', category: 'Transport', done: false },
     { id: 'ck-tr-3', title: 'Confirm infant car seat', category: 'Transport', done: false },
     { id: 'ck-tr-4', title: 'Coordinate airport pickups', category: 'Transport', done: false },
     { id: 'ck-tr-5', title: 'Share arrival/departure times in group chat', category: 'Transport', done: false },
+    { id: 'ck-tr-6', title: 'Plan for 2-car parking max at property', category: 'Transport', done: false, notes: 'Carpool / Uber if more than 2 cars show up.' },
 
     // Food
     { id: 'ck-fo-1', title: 'Start shared grocery list', category: 'Food', done: false },
@@ -231,7 +249,9 @@ export const stpete: Trip = {
       name: 'Airbnb (Exclusive Isla Bonita)',
       total: 3547.5,
       splitCount: 6,
-      notes: 'Base $2,625 · Fees $514.38 · Tax $408.12. $1,110 paid, $2,437.50 due Aug 4. Split 3 couples = $1,182.33/couple.',
+      notes:
+        '5 nights · Base $2,625 · Fees $514.38 (incl. $110 property protection) · Tax $408.12. ' +
+        '$1,110 paid, $2,437.50 due Aug 4. Split 3 couples = $1,182.33/couple. All payments non-refundable.',
     },
     { id: 'b-car', name: 'Rental car (estimate)', total: 400, splitCount: 6, notes: 'Placeholder — update once booked.' },
     { id: 'b-groceries', name: 'Groceries (estimate)', total: 300, splitCount: 6, notes: 'Placeholder — tune as we plan meals.' },
