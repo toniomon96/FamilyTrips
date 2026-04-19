@@ -1,11 +1,11 @@
 import type { Trip } from '../../types/trip'
-import { tuscany } from './tuscany'
+import { stpete } from './stpete'
 
 export const trips: Record<string, Trip> = {
-  [tuscany.slug]: tuscany,
+  [stpete.slug]: stpete,
 }
 
-export const DEFAULT_TRIP_SLUG = tuscany.slug
+export const DEFAULT_TRIP_SLUG = stpete.slug
 
 export function getTrip(slug?: string): Trip {
   if (slug && trips[slug]) return trips[slug]
