@@ -1,0 +1,167 @@
+import type {
+  Booking,
+  BudgetItem,
+  ChecklistItem,
+  Day,
+  Person,
+  Stay,
+  Trip,
+} from '../types/trip'
+
+export function formatShortDate(iso: string): string {
+  const d = new Date(iso + 'T12:00:00')
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+export function formatLongDate(iso: string): string {
+  const d = new Date(iso + 'T12:00:00')
+  return d.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+export function formatDateRange(startIso: string, endIso: string): string {
+  return `${formatShortDate(startIso)} – ${formatShortDate(endIso)}`
+}
+
+export function daysUntil(iso: string): number {
+  const now = new Date()
+  const target = new Date(iso + 'T12:00:00')
+  const diff = target.getTime() - now.getTime()
+  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+}
+
+export function formatMoney(amount: number, currency: string): string {
+  return `${currency}${amount.toLocaleString('en-US')}`
+}
+
+export function formatTripHeader(trip: Trip): string {
+  return `✈️ ${trip.name} — ${trip.location}\n${formatDateRange(trip.startDate, trip.endDate)}`
+}
+
+export function formatTripOverview(trip: Trip): string {
+  const lines: string[] = []
+  lines.push(formatTripHeader(trip))
+  lines.push('')
+  lines.push(`🏠 ${trip.stay.name}`)
+  lines.push(trip.stay.address)
+  lines.push(`Check-in: ${trip.stay.checkIn}`)
+  lines.push(`Check-out: ${trip.stay.checkOut}`)
+  if (trip.stay.wifiSsid) {
+    lines.push(`Wi-Fi: ${trip.stay.wifiSsid}${trip.stay.wifiPassword ? ' / ' + trip.stay.wifiPassword : ''}`)
+  }
+  if (trip.people.length) {
+    lines.push('')
+    lines.push('👪 Who’s coming')
+    for (const p of trip.people) {
+      lines.push(`• ${p.name}${p.phone ? ` — ${p.phone}` : ''}`)
+    }
+  }
+  return lines.join('\n')
+}
+
+export function formatStay(stay: Stay, trip: Trip): string {
+  const lines: string[] = []
+  lines.push(`🏠 ${stay.name} — ${trip.location}`)
+  lines.push(formatDateRange(trip.startDate, trip.endDate))
+  lines.push(stay.address)
+  lines.push(`Check-in: ${stay.checkIn}`)
+  lines.push(`Check-out: ${stay.checkOut}`)
+  if (stay.wifiSsid) {
+    lines.push(`Wi-Fi: ${stay.wifiSsid}${stay.wifiPassword ? ' / ' + stay.wifiPassword : ''}`)
+  }
+  if (stay.hostName) {
+    lines.push(`Host: ${stay.hostName}${stay.hostPhone ? ' ' + stay.hostPhone : ''}`)
+  }
+  if (stay.confirmation) lines.push(`Confirmation: ${stay.confirmation}`)
+  if (stay.bookingLink) lines.push(stay.bookingLink)
+  return lines.join('\n')
+}
+
+export function formatBooking(b: Booking): string {
+  const icon =
+    b.kind === 'flight' ? '✈️' :
+    b.kind === 'car' ? '🚗' :
+    b.kind === 'stay' ? '🏠' :
+    b.kind === 'activity' ? '🎟️' : '📌'
+  const lines = [`${icon} ${b.title}`]
+  if (b.details) lines.push(b.details)
+  if (b.confirmation) lines.push(`Confirmation: ${b.confirmation}`)
+  if (b.link) lines.push(b.link)
+  return lines.join('\n')
+}
+
+export function formatDay(day: Day): string {
+  const lines: string[] = []
+  const header = day.title ? `📅 ${formatLongDate(day.date)} — ${day.title}` : `📅 ${formatLongDate(day.date)}`
+  lines.push(header)
+  for (const item of day.items) {
+    const time = item.time ? `${item.time} · ` : ''
+    lines.push(`• ${time}${item.title}`)
+    if (item.address) lines.push(`  ${item.address}`)
+    if (item.notes) lines.push(`  ${item.notes}`)
+  }
+  return lines.join('\n')
+}
+
+export function formatItinerary(trip: Trip): string {
+  const lines: string[] = []
+  lines.push(`🗓️ Itinerary — ${trip.name}`)
+  lines.push('')
+  for (const day of trip.itinerary) {
+    lines.push(formatDay(day))
+    lines.push('')
+  }
+  return lines.join('\n').trimEnd()
+}
+
+export function formatPerson(p: Person): string {
+  return p.phone ? `${p.name} — ${p.phone}` : p.name
+}
+
+export function formatPeople(trip: Trip): string {
+  const lines: string[] = [`👪 Who’s coming — ${trip.name}`]
+  for (const p of trip.people) {
+    lines.push(`• ${formatPerson(p)}`)
+  }
+  return lines.join('\n')
+}
+
+export function formatChecklist(items: ChecklistItem[]): string {
+  const byCat = new Map<string, ChecklistItem[]>()
+  for (const it of items) {
+    const list = byCat.get(it.category) ?? []
+    list.push(it)
+    byCat.set(it.category, list)
+  }
+  const lines: string[] = ['✅ Trip Checklist']
+  for (const [cat, list] of byCat) {
+    lines.push('')
+    lines.push(cat)
+    for (const it of list) {
+      lines.push(`${it.done ? '✔' : '☐'} ${it.title}`)
+    }
+  }
+  return lines.join('\n')
+}
+
+export function formatBudget(items: BudgetItem[], currency: string): string {
+  const total = items.reduce((s, i) => s + i.total, 0)
+  const perPerson = items.reduce((s, i) => s + i.total / i.splitCount, 0)
+  const lines: string[] = ['💰 Trip Budget']
+  for (const i of items) {
+    const share = i.total / i.splitCount
+    lines.push(`• ${i.name}: ${formatMoney(i.total, currency)} (split ${i.splitCount} = ${formatMoney(Math.round(share), currency)}/person)`)
+  }
+  lines.push('')
+  lines.push(`Total: ${formatMoney(total, currency)}`)
+  lines.push(`Your share: ${formatMoney(Math.round(perPerson), currency)}`)
+  return lines.join('\n')
+}
+
+export function mapsLink(query: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+}
