@@ -164,14 +164,14 @@ export const stpete: Trip = {
   ],
 
   people: [
-    { id: 'p-toni', name: 'Toni Montez', role: 'Organizer', phone: 'TBD' },
-    { id: 'p-morgan', name: 'Morgan Montez', role: 'Wife', phone: 'TBD' },
+    { id: 'p-toni', name: 'Toni Montez', role: 'Organizer', phone: '+1 469 371 9091' },
+    { id: 'p-morgan', name: 'Morgan Montez', role: 'Wife', phone: '+1 256 727 2388' },
     { id: 'p-tatum', name: 'Tatum Montez', role: 'Daughter (infant)' },
-    { id: 'p-leah', name: 'Leah Montez', role: 'Mom', phone: 'TBD' },
-    { id: 'p-tony', name: 'Tony Montez', role: 'Dad', phone: 'TBD' },
-    { id: 'p-laura', name: 'Laura Goodwin', role: 'Mother-in-law', phone: 'TBD' },
-    { id: 'p-mark', name: 'Mark Goodwin', role: 'Father-in-law', phone: 'TBD' },
-    { id: 'p-mikayla', name: 'Mikayla Goodwin', role: 'Sister-in-law · Tentative', phone: 'TBD' },
+    { id: 'p-leah', name: 'Leah Montez', role: 'Mom', phone: '+1 214 475 1376' },
+    { id: 'p-tony', name: 'Tony Montez', role: 'Dad', phone: '+1 469 865 0500' },
+    { id: 'p-laura', name: 'Laura Goodwin', role: 'Mother-in-law', phone: '+1 256 595 1636' },
+    { id: 'p-mark', name: 'Mark Goodwin', role: 'Father-in-law', phone: '+1 256 595 2643' },
+    { id: 'p-mikayla', name: 'Mikayla Goodwin', role: 'Sister-in-law · Tentative', phone: '+1 256 735 9353' },
   ],
 
   contacts: [
@@ -239,7 +239,7 @@ export const stpete: Trip = {
 
     // Admin
     { id: 'ck-ad-1', title: 'Save Beach Time Rentals contact', category: 'Admin', done: true, notes: 'RES-21753 · text 727 565 2958 · office 800 691 8183' },
-    { id: 'ck-ad-2', title: 'Share emergency contact list', category: 'Admin', done: false },
+    { id: 'ck-ad-2', title: 'Share emergency contact list', category: 'Admin', done: false, notes: 'Tap "Copy everyone" on the People page to paste into the group chat.' },
     { id: 'ck-ad-3', title: 'Sign Short Term Rental Agreement', category: 'Admin', done: false, notes: 'Adobe Acrobat Sign link emailed by Beach Time Rentals.' },
   ],
 
