@@ -32,7 +32,10 @@ export const stpete: Trip = {
       '• Bedroom 2 — Leah + Tony (Montez)\n' +
       '• Bedroom 3 — Laura + Mark (Goodwin)\n' +
       '• Bedroom 4 — Mikayla (if joining)\n\n' +
-      '🚗 Only 2 cars allowed on the property. Plan carpools / rideshares accordingly.\n\n' +
+      '🚗 Parking plan (exactly the 2 cars allowed):\n' +
+      '1. Rental — Toni, Morgan, Tatum, Leah, Tony (picked up at TPA)\n' +
+      '2. Mark & Laura’s car (driving from Cullman, AL)\n' +
+      'If anyone else drives down, carpool or park off-site.\n\n' +
       'House rules (from the rental agreement):\n' +
       '• No parties or events — immediate eviction\n' +
       '• No smoking — $1,000 fee\n' +
@@ -77,15 +80,26 @@ export const stpete: Trip = {
     {
       id: 'car',
       kind: 'car',
-      title: 'Rental car (1 car for the group)',
-      details: 'Most family driving in. One shared rental at TPA — pickup/dropoff TBD.',
+      title: 'Rental car — TPA pickup',
+      details:
+        'For Toni + Morgan + Tatum + Toni’s parents (Leah & Tony Montez). ' +
+        'Booking this Friday. Pickup at Tampa International (TPA). Pickup/dropoff times TBD.',
+      when: '2026-09-03',
+    },
+    {
+      id: 'car-inlaws',
+      kind: 'car',
+      title: 'In-laws driving in',
+      details: 'Mark & Laura Goodwin driving from Cullman, AL in their own car. Counts as the 2nd car at the property.',
       when: '2026-09-03',
     },
     {
       id: 'flights-placeholder',
       kind: 'flight',
-      title: 'Flights — fill in per person',
-      details: 'Track prices and book 6–8 weeks out. Add each leg here as they get booked.',
+      title: 'Flights — booking this Friday',
+      details:
+        'Toni + Morgan + Tatum + Leah + Tony booking together this Friday. ' +
+        'Add each leg here (confirmation, times) as they get booked. Mark & Laura driving, not flying.',
       when: '2026-09-03',
     },
   ],
@@ -95,8 +109,9 @@ export const stpete: Trip = {
       date: '2026-09-03',
       title: 'Arrival day',
       items: [
-        { title: 'Everyone arrives in Tampa / St. Pete', notes: 'Share ETAs in the group chat so we can coordinate pickups.' },
-        { time: '4:00 PM', title: 'Check in at Exclusive Isla Bonita', address: '2718 Gulf Blvd, Indian Rocks Beach, FL', notes: 'Remember: only 2 cars allowed on the property.' },
+        { title: 'Mark & Laura drive in from Cullman, AL', notes: '~11 hr drive. Share ETA in the group chat.' },
+        { title: 'Toni, Morgan, Tatum, Leah, Tony fly into TPA', notes: 'Pick up the rental at Tampa International. Share flight ETAs so we can coordinate.' },
+        { time: '4:00 PM', title: 'Check in at Exclusive Isla Bonita', address: '2718 Gulf Blvd, Indian Rocks Beach, FL', notes: 'Two cars at the property: the rental + Mark & Laura’s car. No room for a third.' },
         { title: 'Welcome dinner at the house', notes: 'Grocery run after check-in. Starter toiletries only — bring your own.' },
       ],
     },
@@ -192,7 +207,7 @@ export const stpete: Trip = {
     { id: 'ck-fl-1', title: 'Set Google Flights price alerts', category: 'Flights', done: false },
     { id: 'ck-fl-2', title: 'Compare flights across family', category: 'Flights', done: false },
     { id: 'ck-fl-3', title: 'Select seats (sit together + near grandparents)', category: 'Flights', done: false },
-    { id: 'ck-fl-4', title: 'Book 6–8 weeks out', category: 'Flights', done: false },
+    { id: 'ck-fl-4', title: 'Book flights', category: 'Flights', done: false, notes: 'Booking this Friday: Toni, Morgan, Tatum, Leah, Tony. Mark & Laura driving.' },
     { id: 'ck-fl-5', title: 'Confirm all flight times', category: 'Flights', done: false },
     { id: 'ck-fl-6', title: 'Add Tatum as infant on ticket', category: 'Flights', done: false },
     { id: 'ck-fl-7', title: 'Download airline apps + boarding passes', category: 'Flights', done: false },
@@ -208,12 +223,12 @@ export const stpete: Trip = {
     { id: 'ck-st-7', title: 'Pack own toiletries (property only provides starter)', category: 'Stay', done: false },
 
     // Transport
-    { id: 'ck-tr-1', title: 'Decide rental car count', category: 'Transport', done: true, notes: 'Decision: one shared rental at TPA. Only 2 cars allowed on property, so stay lean.' },
-    { id: 'ck-tr-2', title: 'Book rental car', category: 'Transport', done: false },
-    { id: 'ck-tr-3', title: 'Confirm infant car seat', category: 'Transport', done: false },
-    { id: 'ck-tr-4', title: 'Coordinate airport pickups', category: 'Transport', done: false },
+    { id: 'ck-tr-1', title: 'Decide rental car count', category: 'Transport', done: true, notes: 'One rental at TPA for Toni/Morgan/Tatum + Leah/Tony. Mark & Laura driving their own.' },
+    { id: 'ck-tr-2', title: 'Book rental car', category: 'Transport', done: false, notes: 'Booking this Friday. Needs infant car seat.' },
+    { id: 'ck-tr-3', title: 'Confirm infant car seat (in the rental)', category: 'Transport', done: false },
+    { id: 'ck-tr-4', title: 'Coordinate airport pickups', category: 'Transport', done: false, notes: 'Rental handles Toni/Morgan/Tatum/Leah/Tony. Mark & Laura arriving separately by car.' },
     { id: 'ck-tr-5', title: 'Share arrival/departure times in group chat', category: 'Transport', done: false },
-    { id: 'ck-tr-6', title: 'Plan for 2-car parking max at property', category: 'Transport', done: false, notes: 'Carpool / Uber if more than 2 cars show up.' },
+    { id: 'ck-tr-6', title: 'Plan for 2-car parking max at property', category: 'Transport', done: true, notes: 'Locked: rental + Mark & Laura\'s car = the 2 allowed.' },
 
     // Food
     { id: 'ck-fo-1', title: 'Start shared grocery list', category: 'Food', done: false },
