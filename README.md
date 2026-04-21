@@ -1,6 +1,6 @@
-# TripHub
+# Family Trips
 
-A simple, shareable web hub for a family trip — bookings, itinerary, stay info, who’s coming, and everything else in one link you can send to family and friends.
+A simple, shareable web hub for our family's trips — bookings, itinerary, stay info, who’s coming, and everything else in one link you can send to family and friends. One app, many trips.
 
 **Design ethos**
 
@@ -10,28 +10,42 @@ A simple, shareable web hub for a family trip — bookings, itinerary, stay info
 
 ## Stack
 
-Vite + React 19 + TypeScript + Tailwind v4 + React Router 7. All content lives in code — one `Trip` object per trip.
+Vite + React 19 + TypeScript + Tailwind v4 + React Router 7. All content lives in code — one `Trip` object per trip, registered in a central index.
 
-## How to edit a trip
+## How it's organized
 
-1. Open `src/data/trips/<slug>.ts` (e.g. `stpete.ts`).
+- `/` — **Trips index** (cards for every trip, upcoming first)
+- `/:tripSlug` — Home for that trip (hero/countdown/today/quick-links/share)
+- `/:tripSlug/trip` — Itinerary + things to do
+- `/:tripSlug/stay` — Stay details + bookings (flights, car, activities)
+- `/:tripSlug/people` — Attendees + emergency contacts
+- `/:tripSlug/checklist` — Trip-prep checklist, grouped by category
+- `/:tripSlug/budget` — Cost breakdown with per-person split
+
+## Edit an existing trip
+
+1. Open `src/data/trips/<slug>.ts` (e.g. `stpete.ts`, `okc.ts`).
 2. Edit the `Trip` object — dates, stay, bookings, itinerary, people, checklist, budget, contacts.
-3. Commit and push. Vercel (or any static host) rebuilds and deploys.
+3. Commit and push. Vercel rebuilds and deploys.
 
 Types live in `src/types/trip.ts` — your editor will guide you through the shape.
 
 ## Add a new trip
 
-1. Copy `src/data/trips/stpete.ts` to a new file like `src/data/trips/mexico.ts`.
-2. Change the `slug` and fill in the content.
+1. Copy an existing trip file to `src/data/trips/<new-slug>.ts`.
+2. Change the `slug`, name, dates, and content.
 3. Register it in `src/data/trips/index.ts`:
    ```ts
-   import { mexico } from './mexico'
-   export const trips = { [stpete.slug]: stpete, [mexico.slug]: mexico }
+   import { newtrip } from './newtrip'
+   export const trips: Record<string, Trip> = {
+     [stpete.slug]: stpete,
+     [okc.slug]: okc,
+     [newtrip.slug]: newtrip,
+   }
    ```
-4. Visit `/<slug>` — e.g. `/mexico`.
+4. Visit `/<new-slug>` directly, or tap it on the trips index.
 
-The default trip (loaded at `/`) is controlled by `DEFAULT_TRIP_SLUG` in `src/data/trips/index.ts`.
+The trips index sorts upcoming trips by start date and pushes past trips to the end, so ordering is automatic.
 
 ## Commands
 
@@ -43,24 +57,13 @@ npm run lint     # eslint
 npm run preview  # preview the production build
 ```
 
-## Pages
-
-- `/` — Home (hero, countdown, today’s schedule, quick links, share-trip button)
-- `/trip` — Itinerary + Things to do
-- `/stay` — Stay details (address, Wi-Fi, amenities, host) + Bookings (flights, car, activities)
-- `/people` — Guests + emergency contacts
-- `/checklist` — Static trip-prep checklist, grouped by category
-- `/budget` — Cost breakdown with per-person split
-
-Also works under `/<tripSlug>/*` — e.g. `/tuscany/stay`.
-
 ## Deploying
 
 Vercel (recommended): connect the repo, no config needed — `vercel.json` already handles SPA rewrites. Any other static host (Netlify, Cloudflare Pages, GitHub Pages) works too; make sure it serves `index.html` for unmatched paths.
 
 ## Install to home screen
 
-`public/manifest.webmanifest` is wired up so family can tap "Add to Home Screen" on iOS or Android and open the trip like an app. A full service worker / offline support is on the v1.1 roadmap once `vite-plugin-pwa` ships Vite 8 support.
+`public/manifest.webmanifest` is wired up so family can tap "Add to Home Screen" on iOS or Android and open the trips hub like an app.
 
 ## What’s explicitly not here
 

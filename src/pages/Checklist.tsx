@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useTrip } from '../context/tripContextCore'
 import Section from '../components/Section'
 import CopyButton from '../components/CopyButton'
+import EmptyState from '../components/EmptyState'
 import { formatChecklist } from '../utils/formatters'
 import type { ChecklistItem } from '../types/trip'
 
@@ -9,8 +10,10 @@ const CATEGORY_ICONS: Record<string, string> = {
   Flights: '✈️',
   Stay: '🏠',
   Transport: '🚗',
+  Tickets: '🎟️',
   Food: '🍕',
   Wedding: '💒',
+  Birthday: '🎂',
   Baby: '👶',
   Dogs: '🐶',
   Admin: '📋',
@@ -46,15 +49,21 @@ export default function Checklist() {
         </p>
       </header>
 
-      <div className="rounded-3xl bg-white border border-slate-200 p-5 shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-slate-600">Overall progress</span>
-          <span className="font-semibold">{pct}%</span>
+      {total > 0 && (
+        <div className="rounded-3xl bg-white border border-slate-200 p-5 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-600">Overall progress</span>
+            <span className="font-semibold">{pct}%</span>
+          </div>
+          <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+            <div className="bg-green-500 h-3 rounded-full transition-all" style={{ width: `${pct}%` }} />
+          </div>
         </div>
-        <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-          <div className="bg-green-500 h-3 rounded-full transition-all" style={{ width: `${pct}%` }} />
-        </div>
-      </div>
+      )}
+
+      {total === 0 && (
+        <EmptyState icon="✅" title="No checklist yet" body="Trip prep items will show up here once they’re added." />
+      )}
 
       {grouped.map(([cat, list]) => (
         <Section
@@ -87,9 +96,11 @@ export default function Checklist() {
         </Section>
       ))}
 
-      <div className="flex justify-center">
-        <CopyButton text={formatChecklist(items)} label="Copy full checklist" size="md" />
-      </div>
+      {total > 0 && (
+        <div className="flex justify-center">
+          <CopyButton text={formatChecklist(items)} label="Copy full checklist" size="md" />
+        </div>
+      )}
     </div>
   )
 }

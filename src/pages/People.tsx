@@ -1,6 +1,7 @@
 import { useTrip } from '../context/tripContextCore'
 import Section from '../components/Section'
 import CopyButton from '../components/CopyButton'
+import EmptyState from '../components/EmptyState'
 import { formatPeople, formatPerson } from '../utils/formatters'
 
 function telHref(phone: string) {
@@ -42,6 +43,9 @@ export default function People() {
       </Section>
 
       <Section title="Important contacts" icon="☎️">
+        {trip.contacts.length === 0 && (
+          <EmptyState icon="☎️" title="No contacts yet" body="Emergency numbers, venue contacts, etc. will live here." />
+        )}
         <ul className="divide-y divide-slate-100">
           {trip.contacts.map((c) => {
             const href =

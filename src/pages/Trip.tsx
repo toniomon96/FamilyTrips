@@ -1,6 +1,7 @@
 import { useTrip } from '../context/tripContextCore'
 import Section from '../components/Section'
 import CopyButton from '../components/CopyButton'
+import EmptyState from '../components/EmptyState'
 import {
   formatDay,
   formatItinerary,
@@ -27,9 +28,12 @@ export default function Trip() {
         id="itinerary"
         title="Itinerary"
         icon="🗓️"
-        copyText={formatItinerary(trip)}
+        copyText={trip.itinerary.length ? formatItinerary(trip) : undefined}
         copyLabel="Copy full itinerary"
       >
+        {trip.itinerary.length === 0 && (
+          <EmptyState icon="🗓️" title="Itinerary TBD" body="Day-by-day plans will appear here as they’re locked in." />
+        )}
         <div className="space-y-4">
           {trip.itinerary.map((day) => (
             <article key={day.date} className="rounded-2xl border border-slate-200 overflow-hidden">
@@ -77,6 +81,9 @@ export default function Trip() {
       </Section>
 
       <Section id="things" title="Things to do" icon="📍">
+        {trip.thingsToDo.length === 0 && (
+          <EmptyState icon="📍" title="Nothing listed yet" body="Ideas go here once we start picking activities." />
+        )}
         <ul className="space-y-3">
           {trip.thingsToDo.map((a) => (
             <li key={a.id} className="rounded-2xl border border-slate-200 p-4">

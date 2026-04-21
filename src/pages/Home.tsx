@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useTrip } from '../context/tripContextCore'
 import CopyButton from '../components/CopyButton'
 import {
@@ -10,14 +10,14 @@ import {
 } from '../utils/formatters'
 
 function todaysDay(trip: ReturnType<typeof useTrip>) {
-  const today = new Date().toISOString().slice(0, 10)
-  return trip.itinerary.find((d) => d.date === today)
+  const d = new Date()
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return trip.itinerary.find((day) => day.date === today)
 }
 
 export default function Home() {
   const trip = useTrip()
-  const { tripSlug } = useParams<{ tripSlug?: string }>()
-  const basePath = tripSlug ? `/${tripSlug}` : ''
+  const basePath = `/${trip.slug}`
   const left = daysUntil(trip.startDate)
   const tripStarted = left <= 0
   const tripEnded = daysUntil(trip.endDate) < 0
