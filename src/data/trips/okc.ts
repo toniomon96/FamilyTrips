@@ -1,4 +1,5 @@
 import type { Trip } from '../../types/trip'
+import { dogChecklistItems } from '../checklistPresets'
 
 export const okc: Trip = {
   slug: 'okc',
@@ -226,6 +227,9 @@ export const okc: Trip = {
     { id: 'ck-ba-5', title: 'Baby ear protection for the stadium', category: 'Baby', done: false },
     { id: 'ck-ba-6', title: 'Stroller for Bricktown / park walks', category: 'Baby', done: false },
     { id: 'ck-ba-7', title: 'Plan for Tatum during the 6 PM game', category: 'Baby', done: false, notes: 'Two games back-to-back is a lot — decide ahead if she stays for both, or someone heads back with her.' },
+
+    // Dogs
+    ...dogChecklistItems(),
 
     // Admin
     { id: 'ck-ad-1', title: 'Share address + ETAs in the group chat', category: 'Admin', done: false },
