@@ -1,6 +1,7 @@
 import { useTrip } from '../context/tripContextCore'
 import Section from '../components/Section'
 import CopyButton from '../components/CopyButton'
+import EmptyState from '../components/EmptyState'
 import { formatBooking, formatStay, mapsLink } from '../utils/formatters'
 
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -83,18 +84,23 @@ export default function Stay() {
         )}
       </Section>
 
-      <Section title="Amenities" icon="✨">
-        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {stay.amenities.map((a) => (
-            <li key={a} className="flex items-center gap-2 text-slate-800">
-              <span aria-hidden className="text-green-600">✓</span>
-              {a}
-            </li>
-          ))}
-        </ul>
-      </Section>
+      {stay.amenities.length > 0 && (
+        <Section title="Amenities" icon="✨">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {stay.amenities.map((a) => (
+              <li key={a} className="flex items-center gap-2 text-slate-800">
+                <span aria-hidden className="text-green-600">✓</span>
+                {a}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
 
       <Section title="Bookings" icon="🎟️">
+        {trip.bookings.length === 0 && (
+          <EmptyState icon="🎟️" title="No bookings yet" body="Flights, cars, and reservations will show up here." />
+        )}
         <ul className="space-y-3">
           {trip.bookings.map((b) => {
             const icon =

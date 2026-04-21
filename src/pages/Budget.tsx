@@ -1,5 +1,6 @@
 import { useTrip } from '../context/tripContextCore'
 import Section from '../components/Section'
+import EmptyState from '../components/EmptyState'
 import { formatBudget, formatMoney } from '../utils/formatters'
 
 export default function Budget() {
@@ -30,9 +31,12 @@ export default function Budget() {
       <Section
         title="Breakdown"
         icon="💰"
-        copyText={formatBudget(items, currency)}
+        copyText={items.length ? formatBudget(items, currency) : undefined}
         copyLabel="Copy full budget"
       >
+        {items.length === 0 && (
+          <EmptyState icon="💰" title="Budget TBD" body="Line items and per-person splits will appear here as they’re set." />
+        )}
         <ul className="divide-y divide-slate-100">
           {items.map((b) => {
             const share = b.total / b.splitCount
