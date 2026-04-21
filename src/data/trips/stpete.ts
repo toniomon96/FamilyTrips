@@ -1,5 +1,6 @@
 import type { Trip } from '../../types/trip'
 import heroImage from '../../assets/hero.png'
+import { dogChecklistItems } from '../checklistPresets'
 
 export const stpete: Trip = {
   slug: 'stpete',
@@ -243,10 +244,7 @@ export const stpete: Trip = {
     { id: 'ck-ba-5', title: 'Sunscreen, hats, swim diapers', category: 'Baby', done: false },
 
     // Dogs
-    { id: 'ck-do-1', title: 'Find dog sitter', category: 'Dogs', done: false },
-    { id: 'ck-do-2', title: 'Pack food + leashes', category: 'Dogs', done: false },
-    { id: 'ck-do-3', title: 'Drop off dogs before flight', category: 'Dogs', done: false },
-    { id: 'ck-do-4', title: 'Pick up dogs on return', category: 'Dogs', done: false },
+    ...dogChecklistItems(),
 
     // Wedding
     { id: 'ck-we-1', title: 'RSVP on Zola', category: 'Wedding', done: false, notes: 'zola.com/wedding/yuiandtyler · password: momo' },
