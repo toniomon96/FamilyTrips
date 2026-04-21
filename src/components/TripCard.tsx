@@ -42,9 +42,9 @@ export default function TripCard({ trip }: { trip: Trip }) {
       ) : (
         <div
           aria-hidden
-          className={`h-36 bg-gradient-to-br ${gradientFor(trip.slug)} flex items-center justify-center`}
+          className={`h-36 bg-gradient-to-br ${gradientFor(trip.slug)} flex items-center justify-center px-4`}
         >
-          <span className="text-white/90 text-5xl font-bold tracking-tight">
+          <span className="text-white/95 text-3xl sm:text-4xl font-bold tracking-tight text-center line-clamp-2">
             {trip.location.split(',')[0]}
           </span>
         </div>

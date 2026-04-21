@@ -22,13 +22,15 @@ export default function TripsIndex() {
         {trips.length === 0 ? (
           <EmptyState icon="🧳" title="No trips yet" body="Add a trip file under src/data/trips/ to get started." />
         ) : (
-          <ul className="space-y-4">
-            {trips.map((trip) => (
-              <li key={trip.slug}>
-                <TripCard trip={trip} />
-              </li>
-            ))}
-          </ul>
+          <nav aria-label="Trips">
+            <ul className="space-y-4">
+              {trips.map((trip) => (
+                <li key={trip.slug}>
+                  <TripCard trip={trip} />
+                </li>
+              ))}
+            </ul>
+          </nav>
         )}
       </main>
     </div>

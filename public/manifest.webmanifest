@@ -1,7 +1,7 @@
 {
-  "name": "TripHub — Family Trip",
-  "short_name": "TripHub",
-  "description": "All the details of our family trip in one place.",
+  "name": "Family Trips",
+  "short_name": "Family Trips",
+  "description": "All of our family trips in one place — bookings, itinerary, stay info, and who’s coming on each one.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
