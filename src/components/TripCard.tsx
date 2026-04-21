@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { Trip } from '../types/trip'
 import { daysUntil, formatDateRange } from '../utils/formatters'
+import type { TripProgress } from '../hooks/useAllTripsProgress'
 
 const GRADIENTS = [
   'from-blue-500 to-indigo-600',
@@ -26,8 +27,17 @@ function statusBadge(trip: Trip): { label: string; className: string } {
   return { label: `In ${startIn} days`, className: 'bg-blue-100 text-blue-800' }
 }
 
-export default function TripCard({ trip }: { trip: Trip }) {
+export default function TripCard({
+  trip,
+  progress,
+}: {
+  trip: Trip
+  progress?: TripProgress
+}) {
   const badge = statusBadge(trip)
+  const pct = progress && progress.total > 0
+    ? Math.round((progress.done / progress.total) * 100)
+    : null
 
   return (
     <Link
@@ -62,6 +72,19 @@ export default function TripCard({ trip }: { trip: Trip }) {
         </div>
         <p className="text-sm text-slate-500">{formatDateRange(trip.startDate, trip.endDate)}</p>
         {trip.tagline && <p className="text-sm text-slate-700">{trip.tagline}</p>}
+        {progress && progress.total > 0 && pct !== null && (
+          <div className="pt-1 space-y-1">
+            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="bg-green-500 h-1.5 rounded-full transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <p className="text-xs text-slate-500">
+              {progress.done}/{progress.total} done ({pct}%)
+            </p>
+          </div>
+        )}
       </div>
     </Link>
   )

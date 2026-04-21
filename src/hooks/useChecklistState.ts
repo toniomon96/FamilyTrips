@@ -3,24 +3,35 @@ import { isSupabaseConfigured, supabase, type ChecklistStateRow } from '../lib/s
 
 export type ChecklistStatus = 'online' | 'offline' | 'saving' | 'error'
 
-type DbRow = { done: boolean; updated_at: string }
+export type ChecklistStateEntry = {
+  done: boolean
+  updated_at: string
+  actor_id: string | null
+}
 
 type ToggleResult = {
-  dbRows: Map<string, DbRow>
+  dbRows: Map<string, ChecklistStateEntry>
   status: ChecklistStatus
   toggle: (itemId: string, nextDone: boolean) => void
 }
 
-function mergeRow(prev: Map<string, DbRow>, row: ChecklistStateRow): Map<string, DbRow> {
+function mergeRow(
+  prev: Map<string, ChecklistStateEntry>,
+  row: ChecklistStateRow,
+): Map<string, ChecklistStateEntry> {
   const existing = prev.get(row.item_id)
   if (existing && existing.updated_at >= row.updated_at) return prev
   const next = new Map(prev)
-  next.set(row.item_id, { done: row.done, updated_at: row.updated_at })
+  next.set(row.item_id, {
+    done: row.done,
+    updated_at: row.updated_at,
+    actor_id: row.actor_id,
+  })
   return next
 }
 
-export function useChecklistState(tripSlug: string): ToggleResult {
-  const [dbRows, setDbRows] = useState<Map<string, DbRow>>(() => new Map())
+export function useChecklistState(tripSlug: string, actorId: string | null): ToggleResult {
+  const [dbRows, setDbRows] = useState<Map<string, ChecklistStateEntry>>(() => new Map())
   const [status, setStatus] = useState<ChecklistStatus>(() =>
     isSupabaseConfigured ? 'online' : 'offline',
   )
@@ -102,7 +113,7 @@ export function useChecklistState(tripSlug: string): ToggleResult {
         const now = new Date().toISOString()
         setDbRows((prev) => {
           const next = new Map(prev)
-          next.set(itemId, { done: nextDone, updated_at: now })
+          next.set(itemId, { done: nextDone, updated_at: now, actor_id: actorId })
           return next
         })
         return
@@ -116,7 +127,11 @@ export function useChecklistState(tripSlug: string): ToggleResult {
 
       setDbRows((prev) => {
         const next = new Map(prev)
-        next.set(itemId, { done: nextDone, updated_at: optimisticAt })
+        next.set(itemId, {
+          done: nextDone,
+          updated_at: optimisticAt,
+          actor_id: actorId,
+        })
         return next
       })
 
@@ -125,7 +140,12 @@ export function useChecklistState(tripSlug: string): ToggleResult {
 
       sb.from('checklist_state')
         .upsert(
-          { trip_slug: tripSlug, item_id: itemId, done: nextDone },
+          {
+            trip_slug: tripSlug,
+            item_id: itemId,
+            done: nextDone,
+            actor_id: actorId,
+          },
           { onConflict: 'trip_slug,item_id' },
         )
         .then(({ error }) => {
@@ -146,7 +166,7 @@ export function useChecklistState(tripSlug: string): ToggleResult {
           if (writesOutstanding.current === 0) setStatus('online')
         })
     },
-    [tripSlug, dbRows],
+    [tripSlug, actorId, dbRows],
   )
 
   return { dbRows, status, toggle }

@@ -25,4 +25,15 @@ export type ChecklistStateRow = {
   done: boolean
   updated_at: string
   user_id: string | null
+  actor_id: string | null
+}
+
+export type ChecklistItemRow = {
+  id: string
+  trip_slug: string
+  title: string
+  category: string
+  notes: string | null
+  created_at: string
+  created_by_actor_id: string | null
 }

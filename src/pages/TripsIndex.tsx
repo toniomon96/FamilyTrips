@@ -1,9 +1,12 @@
+import { useMemo } from 'react'
 import { listTripsSorted } from '../data/trips'
 import TripCard from '../components/TripCard'
 import EmptyState from '../components/EmptyState'
+import { useAllTripsProgress } from '../hooks/useAllTripsProgress'
 
 export default function TripsIndex() {
-  const trips = listTripsSorted()
+  const trips = useMemo(() => listTripsSorted(), [])
+  const progress = useAllTripsProgress(trips)
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -26,7 +29,7 @@ export default function TripsIndex() {
             <ul className="space-y-4">
               {trips.map((trip) => (
                 <li key={trip.slug}>
-                  <TripCard trip={trip} />
+                  <TripCard trip={trip} progress={progress.get(trip.slug)} />
                 </li>
               ))}
             </ul>
