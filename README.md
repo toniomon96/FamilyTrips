@@ -34,6 +34,7 @@ Types live in `src/types/trip.ts` — your editor will guide you through the sha
 
 1. Copy an existing trip file to `src/data/trips/<new-slug>.ts`.
 2. Change the `slug`, name, dates, and content.
+   - Optional: set `visibility: 'unlisted'` for trips that should work by direct link but stay off the `/` trips index. Omit it for the default listed behavior.
 3. Register it in `src/data/trips/index.ts`:
    ```ts
    import { newtrip } from './newtrip'
@@ -43,9 +44,9 @@ Types live in `src/types/trip.ts` — your editor will guide you through the sha
      [newtrip.slug]: newtrip,
    }
    ```
-4. Visit `/<new-slug>` directly, or tap it on the trips index.
+4. Visit `/<new-slug>` directly, or tap it on the trips index if it is listed.
 
-The trips index sorts upcoming trips by start date and pushes past trips to the end, so ordering is automatic.
+The trips index sorts listed upcoming trips by start date and pushes listed past trips to the end, so ordering is automatic. Unlisted trips are still registered and can be opened by anyone with the direct URL; this is a casual privacy boundary, not authentication.
 
 ## Commands
 

@@ -89,6 +89,7 @@ export type Trip = {
   location: string
   startDate: string
   endDate: string
+  visibility?: 'listed' | 'unlisted'
   heroImage?: string
   currency: string
   tagline?: string

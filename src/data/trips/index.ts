@@ -1,10 +1,12 @@
 import type { Trip } from '../../types/trip'
 import { stpete } from './stpete'
 import { okc } from './okc'
+import { loganBachelor } from './logan-bachelor'
 
 export const trips: Record<string, Trip> = {
   [stpete.slug]: stpete,
   [okc.slug]: okc,
+  [loganBachelor.slug]: loganBachelor,
 }
 
 export function getTrip(slug?: string): Trip | undefined {
@@ -13,6 +15,10 @@ export function getTrip(slug?: string): Trip | undefined {
 
 export function listTrips(): Trip[] {
   return Object.values(trips)
+}
+
+export function listListedTrips(): Trip[] {
+  return listTrips().filter((trip) => trip.visibility !== 'unlisted')
 }
 
 function todayLocalISO(): string {
@@ -27,7 +33,7 @@ export function listTripsSorted(): Trip[] {
   const today = todayLocalISO()
   const upcomingOrActive: Trip[] = []
   const past: Trip[] = []
-  for (const t of listTrips()) {
+  for (const t of listListedTrips()) {
     if (t.endDate >= today) upcomingOrActive.push(t)
     else past.push(t)
   }
