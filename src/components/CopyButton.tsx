@@ -45,7 +45,7 @@ export default function CopyButton({ text, label = 'Copy for text', className = 
       type="button"
       onClick={onClick}
       aria-label={copied ? 'Copied' : label}
-      className={`inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white text-slate-700 font-medium shadow-sm active:scale-95 transition ${padding} ${className}`}
+      className={`inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white text-slate-700 font-medium shadow-sm active:scale-95 transition whitespace-nowrap ${padding} ${className}`}
     >
       <span aria-hidden>{copied ? '✅' : '📋'}</span>
       <span>{copied ? 'Copied!' : label}</span>

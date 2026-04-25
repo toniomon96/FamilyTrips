@@ -3,6 +3,7 @@ import { stpete } from './stpete'
 import { okc } from './okc'
 import { loganBachelor } from './logan-bachelor'
 import { familyCookout } from './family-cookout'
+import { mothersDay2026 } from './mothers-day-2026'
 import { todayLocalISO } from '../../utils/formatters'
 
 export const trips: Record<string, Trip> = {
@@ -10,6 +11,7 @@ export const trips: Record<string, Trip> = {
   [okc.slug]: okc,
   [loganBachelor.slug]: loganBachelor,
   [familyCookout.slug]: familyCookout,
+  [mothersDay2026.slug]: mothersDay2026,
 }
 
 export function getTrip(slug?: string): Trip | undefined {

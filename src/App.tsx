@@ -10,6 +10,7 @@ const Checklist = lazy(() => import('./pages/Checklist'))
 const Budget = lazy(() => import('./pages/Budget'))
 const Packing = lazy(() => import('./pages/Packing'))
 const TripsIndex = lazy(() => import('./pages/TripsIndex'))
+const MothersDay2026 = lazy(() => import('./pages/MothersDay2026'))
 
 function RouteFallback() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/" element={<TripsIndex />} />
+          <Route path="/mothers-day-2026" element={<MothersDay2026 />} />
           <Route path="/:tripSlug" element={<Layout />}>
             <Route index element={<Home />} />
             <Route path="trip" element={<Trip />} />
