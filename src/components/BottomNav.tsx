@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 
 type Item = { to: string; label: string; icon: string; end?: boolean }
 
-const items: Item[] = [
+const tripItems: Item[] = [
   { to: '', label: 'Home', icon: '🏠', end: true },
   { to: 'trip', label: 'Trip', icon: '🗓️' },
   { to: 'stay', label: 'Stay', icon: '🛏️' },
@@ -11,7 +11,24 @@ const items: Item[] = [
   { to: 'budget', label: 'Budget', icon: '💰' },
 ]
 
-export default function BottomNav({ basePath }: { basePath: string }) {
+const eventItems: Item[] = [
+  { to: '', label: 'Home', icon: '🏠', end: true },
+  { to: 'trip', label: 'Plan', icon: '🗓️' },
+  { to: 'stay', label: 'Place', icon: '📍' },
+  { to: 'people', label: 'People', icon: '👪' },
+  { to: 'checklist', label: 'Tasks', icon: '✅' },
+  { to: 'budget', label: 'Budget', icon: '💰' },
+]
+
+export default function BottomNav({
+  basePath,
+  kind = 'trip',
+}: {
+  basePath: string
+  kind?: 'trip' | 'event'
+}) {
+  const items = kind === 'event' ? eventItems : tripItems
+
   return (
     <nav
       aria-label="Primary"

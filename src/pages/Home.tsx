@@ -66,11 +66,11 @@ export default function Home() {
 
       <div className="rounded-3xl bg-blue-600 text-white p-6 text-center shadow-sm">
         {tripEnded ? (
-          <p className="text-3xl font-semibold">Trip wrapped 🎉</p>
+          <p className="text-3xl font-semibold">{isEvent ? 'Event wrapped 🎉' : 'Trip wrapped 🎉'}</p>
         ) : tripStarted ? (
           <>
             <p className="text-blue-100 text-sm uppercase tracking-wide">Happening now</p>
-            <p className="text-4xl font-bold mt-1">We’re here!</p>
+            <p className="text-4xl font-bold mt-1">{isEvent ? 'It’s happening!' : 'We’re here!'}</p>
           </>
         ) : (
           <>

@@ -30,7 +30,7 @@ export default function Layout() {
           </Link>
           <Outlet />
         </main>
-        <BottomNav basePath={basePath} />
+        <BottomNav basePath={basePath} kind={trip.kind} />
       </div>
     </TripContext.Provider>
   )
