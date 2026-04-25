@@ -15,6 +15,52 @@ type ToggleResult = {
   toggle: (itemId: string, nextDone: boolean) => void
 }
 
+const LOCAL_STATE_PREFIX = 'familytrips:checklist-state:'
+
+function localStateKey(tripSlug: string): string {
+  return LOCAL_STATE_PREFIX + tripSlug
+}
+
+function hasSessionStorage(): boolean {
+  return typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined'
+}
+
+function readLocalState(tripSlug: string): Map<string, ChecklistStateEntry> {
+  if (!hasSessionStorage()) return new Map()
+  try {
+    const raw = window.sessionStorage.getItem(localStateKey(tripSlug))
+    if (!raw) return new Map()
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return new Map()
+
+    const entries = parsed.filter((entry): entry is [string, ChecklistStateEntry] => {
+      if (!Array.isArray(entry) || entry.length !== 2) return false
+      const [itemId, state] = entry
+      return (
+        typeof itemId === 'string' &&
+        typeof state === 'object' &&
+        state !== null &&
+        typeof state.done === 'boolean' &&
+        typeof state.updated_at === 'string' &&
+        (typeof state.actor_id === 'string' || state.actor_id === null)
+      )
+    })
+
+    return new Map(entries)
+  } catch {
+    return new Map()
+  }
+}
+
+function writeLocalState(tripSlug: string, rows: Map<string, ChecklistStateEntry>): void {
+  if (!hasSessionStorage()) return
+  try {
+    window.sessionStorage.setItem(localStateKey(tripSlug), JSON.stringify([...rows.entries()]))
+  } catch {
+    // ignore storage failures (private browsing, quota, etc.)
+  }
+}
+
 function mergeRow(
   prev: Map<string, ChecklistStateEntry>,
   row: ChecklistStateRow,
@@ -31,12 +77,23 @@ function mergeRow(
 }
 
 export function useChecklistState(tripSlug: string, actorId: string | null): ToggleResult {
-  const [dbRows, setDbRows] = useState<Map<string, ChecklistStateEntry>>(() => new Map())
+  const [dbRows, setDbRows] = useState<Map<string, ChecklistStateEntry>>(() =>
+    isSupabaseConfigured ? new Map() : readLocalState(tripSlug),
+  )
   const [status, setStatus] = useState<ChecklistStatus>(() =>
     isSupabaseConfigured ? 'online' : 'offline',
   )
   const inFlight = useRef<Set<string>>(new Set())
   const writesOutstanding = useRef(0)
+
+  useEffect(() => {
+    if (isSupabaseConfigured) return
+    const timeout = window.setTimeout(() => {
+      setDbRows(readLocalState(tripSlug))
+      setStatus('offline')
+    }, 0)
+    return () => window.clearTimeout(timeout)
+  }, [tripSlug])
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return
@@ -114,6 +171,7 @@ export function useChecklistState(tripSlug: string, actorId: string | null): Tog
         setDbRows((prev) => {
           const next = new Map(prev)
           next.set(itemId, { done: nextDone, updated_at: now, actor_id: actorId })
+          writeLocalState(tripSlug, next)
           return next
         })
         return

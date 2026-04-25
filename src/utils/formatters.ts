@@ -3,6 +3,7 @@ import type {
   BudgetItem,
   ChecklistItem,
   Day,
+  PackingItem,
   Person,
   Stay,
   Trip,
@@ -184,6 +185,27 @@ export function formatChecklist(items: ChecklistItem[]): string {
     lines.push(cat)
     for (const it of list) {
       lines.push(`${it.done ? '✔' : '☐'} ${it.title}`)
+    }
+  }
+  return lines.join('\n')
+}
+
+export function formatPackingList(items: PackingItem[], title = 'Packing List'): string {
+  const byCat = new Map<string, PackingItem[]>()
+  for (const it of items) {
+    const list = byCat.get(it.category) ?? []
+    list.push(it)
+    byCat.set(it.category, list)
+  }
+  const lines: string[] = [`🎒 ${title}`]
+  for (const [cat, list] of byCat) {
+    lines.push('')
+    lines.push(cat)
+    for (const it of list) {
+      const quantity = it.quantity ? ` (${it.quantity})` : ''
+      const assigned = it.assignedTo ? ` — ${it.assignedTo}` : ''
+      lines.push(`${it.packed ? '✔' : '☐'} ${it.title}${quantity}${assigned}`)
+      if (it.notes) lines.push(`  ${it.notes}`)
     }
   }
   return lines.join('\n')

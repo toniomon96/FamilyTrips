@@ -28,6 +28,7 @@ export default function Home() {
     { to: 'stay', label: 'Stay & Bookings', icon: '🛏️', hint: 'Address, Wi-Fi, flights' },
     { to: 'people', label: 'People', icon: '👪', hint: 'Who’s coming' },
     { to: 'checklist', label: 'Checklist', icon: '✅', hint: 'What’s done, what’s not' },
+    { to: 'packing', label: 'Packing', icon: '🎒', hint: 'What to bring' },
     { to: 'budget', label: 'Budget', icon: '💰', hint: 'Costs & per-person split' },
   ]
 

@@ -6,6 +6,7 @@ import Stay from './pages/Stay'
 import People from './pages/People'
 import Checklist from './pages/Checklist'
 import Budget from './pages/Budget'
+import Packing from './pages/Packing'
 import TripsIndex from './pages/TripsIndex'
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="stay" element={<Stay />} />
           <Route path="people" element={<People />} />
           <Route path="checklist" element={<Checklist />} />
+          <Route path="packing" element={<Packing />} />
           <Route path="budget" element={<Budget />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

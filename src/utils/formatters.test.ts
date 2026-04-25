@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { listTripsSorted } from '../data/trips'
-import type { BudgetItem, Day } from '../types/trip'
-import { daysUntil, formatBudget, formatDay } from './formatters'
+import type { BudgetItem, Day, PackingItem } from '../types/trip'
+import { daysUntil, formatBudget, formatDay, formatPackingList } from './formatters'
+import { packingStateKey } from './packing'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -79,5 +80,36 @@ describe('copy formatters', () => {
     ]
 
     expect(formatBudget(items, '$')).toContain('split 1 way')
+  })
+
+  it('formats grouped packing items with quantities, notes, and assignments', () => {
+    const items: PackingItem[] = [
+      {
+        id: 'swimsuit',
+        title: 'Swimsuits',
+        category: 'Beach / Pool',
+        quantity: '2 each',
+        packed: true,
+      },
+      {
+        id: 'diapers',
+        title: 'Diapers',
+        category: 'Baby',
+        assignedTo: 'Tatum',
+        notes: 'More than you think.',
+      },
+    ]
+
+    const text = formatPackingList(items, 'OKC Packing')
+
+    expect(text).toContain('🎒 OKC Packing')
+    expect(text).toContain('Beach / Pool')
+    expect(text).toContain('✔ Swimsuits (2 each)')
+    expect(text).toContain('☐ Diapers — Tatum')
+    expect(text).toContain('  More than you think.')
+  })
+
+  it('namespaces packing state keys away from checklist item ids', () => {
+    expect(packingStateKey('pk-docs-id')).toBe('packing:pk-docs-id')
   })
 })

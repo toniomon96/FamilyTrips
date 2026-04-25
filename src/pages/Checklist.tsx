@@ -4,9 +4,10 @@ import Section from '../components/Section'
 import CopyButton from '../components/CopyButton'
 import EmptyState from '../components/EmptyState'
 import ActorPicker from '../components/ActorPicker'
+import SyncStatusChip from '../components/SyncStatusChip'
 import { formatChecklist, formatTimeAgo } from '../utils/formatters'
 import type { ChecklistItem, Person } from '../types/trip'
-import { useChecklistState, type ChecklistStatus } from '../hooks/useChecklistState'
+import { useChecklistState } from '../hooks/useChecklistState'
 import { useChecklistItems, type AddItemInput } from '../hooks/useChecklistItems'
 import { useActor } from '../hooks/useActor'
 
@@ -28,28 +29,6 @@ type MergedItem = ChecklistItem & {
   source: 'code' | 'db'
   updatedAt: string | null
   actorId: string | null
-}
-
-function StatusChip({ status }: { status: ChecklistStatus }) {
-  if (status === 'online') return null
-  const classes: Record<Exclude<ChecklistStatus, 'online'>, string> = {
-    saving: 'bg-blue-50 text-blue-700 border-blue-200',
-    offline: 'bg-amber-50 text-amber-800 border-amber-200',
-    error: 'bg-red-50 text-red-700 border-red-200',
-  }
-  const label: Record<Exclude<ChecklistStatus, 'online'>, string> = {
-    saving: 'Saving…',
-    offline: 'Offline · changes stay here',
-    error: 'Couldn’t save · try again',
-  }
-  return (
-    <span
-      className={`text-xs font-medium px-2 py-0.5 rounded-full border ${classes[status]}`}
-      role="status"
-    >
-      {label[status]}
-    </span>
-  )
 }
 
 function ActorBadge({
@@ -392,7 +371,7 @@ export default function Checklist() {
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm text-slate-600">Overall progress</span>
             <div className="flex items-center gap-2">
-              <StatusChip status={status} />
+              <SyncStatusChip status={status} />
               <span className="font-semibold">{pct}%</span>
             </div>
           </div>

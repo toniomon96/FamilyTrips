@@ -237,6 +237,30 @@ export const okc: Trip = {
     { id: 'ck-ad-3', title: 'Share the Saturday game-day plan', category: 'Admin', done: false, notes: 'Leave 1:00–1:15 PM · doors 12:30 · seats Sec 19 Row H 34–39.' },
   ],
 
+  packing: [
+    { id: 'pk-docs-id', title: 'Photo IDs', category: 'Travel docs', quantity: 'Adults' },
+    { id: 'pk-docs-airbnb', title: 'Airbnb confirmation and key instructions', category: 'Travel docs' },
+    { id: 'pk-docs-tickets', title: 'WCWS tickets saved to phones', category: 'Travel docs' },
+    { id: 'pk-clothes-weekend', title: 'Weekend outfits', category: 'Clothes', quantity: '3 days' },
+    { id: 'pk-clothes-game', title: 'Game-day clothes', category: 'Clothes', notes: 'Comfortable for Devon Park.' },
+    { id: 'pk-clothes-sleep', title: 'Sleepwear', category: 'Clothes' },
+    { id: 'pk-toiletries-basics', title: 'Toiletries', category: 'Toiletries' },
+    { id: 'pk-toiletries-meds', title: 'Medicine / prescriptions', category: 'Toiletries' },
+    { id: 'pk-birthday-outfit', title: 'Birthday dinner outfit', category: 'Wedding / Event', notes: 'The Jones Assembly Friday night.' },
+    { id: 'pk-birthday-gift', title: 'Morgan birthday gift / card', category: 'Wedding / Event' },
+    { id: 'pk-baby-diapers', title: 'Diapers + wipes', category: 'Baby', assignedTo: 'Tatum' },
+    { id: 'pk-baby-feeding', title: 'Bottles + feeding supplies', category: 'Baby', assignedTo: 'Tatum' },
+    { id: 'pk-baby-stroller', title: 'Stroller', category: 'Baby', assignedTo: 'Tatum' },
+    { id: 'pk-baby-ear', title: 'Baby ear protection', category: 'Baby', assignedTo: 'Tatum', notes: 'For the stadium.' },
+    { id: 'pk-tech-chargers', title: 'Phone chargers', category: 'Tech' },
+    { id: 'pk-tech-battery', title: 'Portable battery', category: 'Tech', notes: 'Useful for doubleheader day.' },
+    { id: 'pk-car-seat', title: 'Infant car seat installed', category: 'Car / Road trip' },
+    { id: 'pk-car-snacks', title: 'Road snacks + drinks', category: 'Car / Road trip' },
+    { id: 'pk-car-entertainment', title: 'Baby toys / car entertainment', category: 'Car / Road trip' },
+    { id: 'pk-dogs-food', title: 'Dog food + bowls', category: 'Dogs' },
+    { id: 'pk-dogs-leash', title: 'Leashes / waste bags', category: 'Dogs' },
+  ],
+
   budget: [
     {
       id: 'b-stay',

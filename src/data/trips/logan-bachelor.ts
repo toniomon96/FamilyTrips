@@ -389,6 +389,24 @@ export const loganBachelor: Trip = {
     },
   ],
 
+  packing: [
+    { id: 'pk-docs-id', title: 'Photo ID', category: 'Travel docs' },
+    { id: 'pk-docs-cash', title: 'Cash / cards', category: 'Travel docs' },
+    { id: 'pk-clothes-weekend', title: 'Weekend clothes', category: 'Clothes', quantity: '3 days' },
+    { id: 'pk-clothes-going-out', title: 'Going-out outfits', category: 'Clothes', quantity: '2 nights' },
+    { id: 'pk-clothes-sleep', title: 'Sleepwear', category: 'Clothes' },
+    { id: 'pk-toiletries-basics', title: 'Toiletries', category: 'Toiletries' },
+    { id: 'pk-toiletries-meds', title: 'Medicine / recovery basics', category: 'Toiletries' },
+    { id: 'pk-event-dinner', title: 'Nice dinner outfit', category: 'Wedding / Event', notes: 'For Saturday steak / nicer dinner.' },
+    { id: 'pk-golf-clubs', title: 'Golf clubs', category: 'Golf' },
+    { id: 'pk-golf-shoes', title: 'Golf shoes', category: 'Golf' },
+    { id: 'pk-golf-balls', title: 'Golf balls / glove', category: 'Golf' },
+    { id: 'pk-tech-charger', title: 'Phone charger', category: 'Tech' },
+    { id: 'pk-tech-battery', title: 'Portable battery', category: 'Tech' },
+    { id: 'pk-car-snacks', title: 'Road snacks + drinks', category: 'Car / Road trip' },
+    { id: 'pk-car-playlist', title: 'Road trip playlist / aux setup', category: 'Car / Road trip' },
+  ],
+
   budget: [
     {
       id: 'b-recovery',

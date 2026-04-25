@@ -261,6 +261,30 @@ export const stpete: Trip = {
     { id: 'ck-ad-4', title: 'Confirm Sat Orlando visit plans with Dad', category: 'Admin', done: false, notes: 'Address, arrival time, cookout vs not. ~2 hr each way.' },
   ],
 
+  packing: [
+    { id: 'pk-docs-id', title: 'Photo IDs', category: 'Travel docs', quantity: 'Adults' },
+    { id: 'pk-docs-flight', title: 'Flight confirmations / boarding passes', category: 'Travel docs' },
+    { id: 'pk-docs-wedding', title: 'Wedding invite / Zola details', category: 'Travel docs', notes: 'Password and venue details are in Contacts.' },
+    { id: 'pk-clothes-outfits', title: 'Casual beach outfits', category: 'Clothes', quantity: '5 days' },
+    { id: 'pk-clothes-sleep', title: 'Sleepwear', category: 'Clothes' },
+    { id: 'pk-clothes-laundry', title: 'Laundry bag', category: 'Clothes' },
+    { id: 'pk-toiletries-basics', title: 'Toiletries', category: 'Toiletries', notes: 'Rental only provides starter toiletries.' },
+    { id: 'pk-toiletries-meds', title: 'Medicine / prescriptions', category: 'Toiletries' },
+    { id: 'pk-beach-swimsuits', title: 'Swimsuits', category: 'Beach / Pool', quantity: '2 each' },
+    { id: 'pk-beach-sunscreen', title: 'Sunscreen', category: 'Beach / Pool' },
+    { id: 'pk-beach-towels', title: 'Beach towels / coverups', category: 'Beach / Pool' },
+    { id: 'pk-beach-shade', title: 'Beach shade / tent', category: 'Beach / Pool', assignedTo: 'Tatum crew' },
+    { id: 'pk-wedding-outfits', title: 'Wedding outfits', category: 'Wedding / Event', notes: 'Cocktail / business casual brunch vibes.' },
+    { id: 'pk-wedding-shoes', title: 'Wedding shoes', category: 'Wedding / Event' },
+    { id: 'pk-wedding-gift', title: 'Wedding card / gift', category: 'Wedding / Event' },
+    { id: 'pk-baby-diapers', title: 'Diapers + wipes', category: 'Baby', assignedTo: 'Tatum' },
+    { id: 'pk-baby-swim', title: 'Swim diapers + baby sunscreen', category: 'Baby', assignedTo: 'Tatum' },
+    { id: 'pk-baby-sleep', title: 'Pack & play / sleep plan items', category: 'Baby', assignedTo: 'Tatum' },
+    { id: 'pk-tech-chargers', title: 'Phone chargers', category: 'Tech' },
+    { id: 'pk-tech-battery', title: 'Portable battery', category: 'Tech' },
+    { id: 'pk-dogs-care', title: 'Dog care confirmed at home', category: 'Dogs', notes: 'Use checklist for the handoff tasks.' },
+  ],
+
   budget: [
     {
       id: 'b-stay',

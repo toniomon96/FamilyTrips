@@ -75,6 +75,16 @@ export type ChecklistItem = {
   notes?: string
 }
 
+export type PackingItem = {
+  id: string
+  title: string
+  category: string
+  packed?: boolean
+  quantity?: string
+  notes?: string
+  assignedTo?: string
+}
+
 export type BudgetItem = {
   id: string
   name: string
@@ -101,6 +111,7 @@ export type Trip = {
   people: Person[]
   contacts: Contact[]
   checklist: ChecklistItem[]
+  packing?: PackingItem[]
   budget: BudgetItem[]
   map?: {
     embedUrl?: string

@@ -20,12 +20,13 @@ Vite + React 19 + TypeScript + Tailwind v4 + React Router 7. All content lives i
 - `/:tripSlug/stay` — Stay details + bookings (flights, car, activities)
 - `/:tripSlug/people` — Attendees + emergency contacts
 - `/:tripSlug/checklist` — Trip-prep checklist, grouped by category
+- `/:tripSlug/packing` — What to bring, grouped by category
 - `/:tripSlug/budget` — Cost breakdown with per-person split
 
 ## Edit an existing trip
 
 1. Open `src/data/trips/<slug>.ts` (e.g. `stpete.ts`, `okc.ts`).
-2. Edit the `Trip` object — dates, stay, bookings, itinerary, people, checklist, budget, contacts.
+2. Edit the `Trip` object — dates, stay, bookings, itinerary, people, checklist, packing, budget, contacts.
 3. Commit and push. Vercel rebuilds and deploys.
 
 Types live in `src/types/trip.ts` — your editor will guide you through the shape.
@@ -61,21 +62,25 @@ npm run preview  # preview the production build
 
 ## Configuration
 
-The checklist is backed by Supabase so toggles sync across devices in real time. Two env vars are needed:
+The checklist and packing toggles are backed by Supabase so changes can sync across devices in real time. Two env vars are needed:
 
 - `VITE_SUPABASE_URL` — `https://<project-ref>.supabase.co`
 - `VITE_SUPABASE_ANON_KEY` — the project's **anon / publishable** key
 
 Set both in Vercel → Project Settings → Environment Variables (Production + Preview + Development). Trigger a redeploy after saving — Vite bakes env vars at build time.
 
-For local dev, copy `.env.example` to `.env.local` and fill in the same values. If the vars are missing, checkbox toggles and user-added checklist items still work in the current browser session but are not permanent.
+For local dev, copy `.env.example` to `.env.local` and fill in the same values. If the vars are missing, checkbox toggles and user-added checklist items still work in the current browser session but are not permanent. Session-only changes are not uploaded later if Supabase env vars are added.
 
 The checklist uses two tables:
 
 - `checklist_state` — one row per trip + checklist item, storing done state and the selected actor.
 - `checklist_items` — user-added checklist items for a trip, including title, category, notes, and creator actor.
 
+Packing reuses `checklist_state` with namespaced item IDs like `packing:pk-docs-id`, so no third table is needed.
+
 The Supabase posture is intentionally casual: anon clients can read/write checklist rows for shared family links. Keep the app deployed only where that tradeoff is acceptable. Code should always query by the current registered trip slugs or direct trip slug, but this is not authentication.
+
+See `docs/SUPABASE.md` for setup SQL and `docs/DEPLOY_SMOKE_TEST.md` for post-deploy checks.
 
 ## Privacy model
 
