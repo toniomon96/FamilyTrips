@@ -15,7 +15,13 @@ type UseChecklistItemsResult = {
   deleteItem: (id: string) => Promise<void>
 }
 
+type ScopedItems = {
+  tripSlug: string
+  items: ChecklistItemRow[]
+}
+
 const LOCAL_ITEMS_PREFIX = 'familytrips:checklist-items:'
+const EMPTY_ITEMS: ChecklistItemRow[] = []
 
 function localItemsKey(tripSlug: string): string {
   return LOCAL_ITEMS_PREFIX + tripSlug
@@ -67,12 +73,16 @@ export function useChecklistItems(
   tripSlug: string,
   actorId: string | null,
 ): UseChecklistItemsResult {
-  const [items, setItems] = useState<ChecklistItemRow[]>([])
+  const [itemState, setItemState] = useState<ScopedItems>(() => ({
+    tripSlug,
+    items: isSupabaseConfigured ? [] : readLocalItems(tripSlug),
+  }))
+  const items = itemState.tripSlug === tripSlug ? itemState.items : EMPTY_ITEMS
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
       const timeout = window.setTimeout(() => {
-        setItems(readLocalItems(tripSlug))
+        setItemState({ tripSlug, items: readLocalItems(tripSlug) })
       }, 0)
       return () => window.clearTimeout(timeout)
     }
@@ -93,16 +103,20 @@ export function useChecklistItems(
         (payload) => {
           if (payload.eventType === 'DELETE') {
             const old = payload.old as Partial<ChecklistItemRow>
-            setItems((prev) => prev.filter((i) => i.id !== old.id))
+            setItemState((prev) => {
+              const items = prev.tripSlug === tripSlug ? prev.items : []
+              return { tripSlug, items: items.filter((i) => i.id !== old.id) }
+            })
             return
           }
           const row = payload.new as ChecklistItemRow
-          setItems((prev) => {
-            const idx = prev.findIndex((i) => i.id === row.id)
-            if (idx === -1) return [...prev, row]
-            const next = prev.slice()
+          setItemState((prev) => {
+            const items = prev.tripSlug === tripSlug ? prev.items : []
+            const idx = items.findIndex((i) => i.id === row.id)
+            if (idx === -1) return { tripSlug, items: [...items, row] }
+            const next = items.slice()
             next[idx] = row
-            return next
+            return { tripSlug, items: next }
           })
         },
       )
@@ -114,7 +128,7 @@ export function useChecklistItems(
       .order('created_at', { ascending: true })
       .then(({ data, error }) => {
         if (cancelled || error) return
-        setItems((data ?? []) as ChecklistItemRow[])
+        setItemState({ tripSlug, items: (data ?? []) as ChecklistItemRow[] })
       })
 
     return () => {
@@ -127,10 +141,11 @@ export function useChecklistItems(
     async (input: AddItemInput): Promise<ChecklistItemRow | null> => {
       if (!isSupabaseConfigured || !supabase) {
         const row = createLocalItem(tripSlug, actorId, input)
-        setItems((prev) => {
-          const next = [...prev, row]
+        setItemState((prev) => {
+          const items = prev.tripSlug === tripSlug ? prev.items : []
+          const next = [...items, row]
           writeLocalItems(tripSlug, next)
-          return next
+          return { tripSlug, items: next }
         })
         return row
       }
@@ -159,10 +174,11 @@ export function useChecklistItems(
       if (patch.notes !== undefined) update.notes = patch.notes?.trim() || null
       if (Object.keys(update).length === 0) return
       if (!isSupabaseConfigured || !supabase) {
-        setItems((prev) => {
-          const next = prev.map((item) => (item.id === id ? { ...item, ...update } : item))
+        setItemState((prev) => {
+          const items = prev.tripSlug === tripSlug ? prev.items : []
+          const next = items.map((item) => (item.id === id ? { ...item, ...update } : item))
           writeLocalItems(tripSlug, next)
-          return next
+          return { tripSlug, items: next }
         })
         return
       }
@@ -173,10 +189,11 @@ export function useChecklistItems(
 
   const deleteItem = useCallback(async (id: string): Promise<void> => {
     if (!isSupabaseConfigured || !supabase) {
-      setItems((prev) => {
-        const next = prev.filter((item) => item.id !== id)
+      setItemState((prev) => {
+        const items = prev.tripSlug === tripSlug ? prev.items : []
+        const next = items.filter((item) => item.id !== id)
         writeLocalItems(tripSlug, next)
-        return next
+        return { tripSlug, items: next }
       })
       return
     }
