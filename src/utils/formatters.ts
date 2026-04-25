@@ -2,7 +2,9 @@ import type {
   Booking,
   BudgetItem,
   ChecklistItem,
+  CopyBlock,
   Day,
+  EventFoodItem,
   PackingItem,
   Person,
   Stay,
@@ -80,17 +82,18 @@ export function formatSplitCount(count: number): string {
 }
 
 export function formatTripHeader(trip: Trip): string {
-  return `✈️ ${trip.name} — ${trip.location}\n${formatDateRange(trip.startDate, trip.endDate)}`
+  const icon = trip.kind === 'event' ? '🎉' : '✈️'
+  return `${icon} ${trip.name} — ${trip.location}\n${formatDateRange(trip.startDate, trip.endDate)}`
 }
 
 export function formatTripOverview(trip: Trip): string {
   const lines: string[] = []
   lines.push(formatTripHeader(trip))
   lines.push('')
-  lines.push(`🏠 ${trip.stay.name}`)
+  lines.push(`${trip.kind === 'event' ? '📍' : '🏠'} ${trip.stay.name}`)
   lines.push(trip.stay.address)
-  lines.push(`Check-in: ${trip.stay.checkIn}`)
-  lines.push(`Check-out: ${trip.stay.checkOut}`)
+  lines.push(`${trip.kind === 'event' ? 'Starts' : 'Check-in'}: ${trip.stay.checkIn}`)
+  lines.push(`${trip.kind === 'event' ? 'Ends' : 'Check-out'}: ${trip.stay.checkOut}`)
   if (trip.stay.wifiSsid) {
     lines.push(`Wi-Fi: ${trip.stay.wifiSsid}${trip.stay.wifiPassword ? ' / ' + trip.stay.wifiPassword : ''}`)
   }
@@ -106,11 +109,11 @@ export function formatTripOverview(trip: Trip): string {
 
 export function formatStay(stay: Stay, trip: Trip): string {
   const lines: string[] = []
-  lines.push(`🏠 ${stay.name} — ${trip.location}`)
+  lines.push(`${trip.kind === 'event' ? '📍' : '🏠'} ${stay.name} — ${trip.location}`)
   lines.push(formatDateRange(trip.startDate, trip.endDate))
   lines.push(stay.address)
-  lines.push(`Check-in: ${stay.checkIn}`)
-  lines.push(`Check-out: ${stay.checkOut}`)
+  lines.push(`${trip.kind === 'event' ? 'Starts' : 'Check-in'}: ${stay.checkIn}`)
+  lines.push(`${trip.kind === 'event' ? 'Ends' : 'Check-out'}: ${stay.checkOut}`)
   if (stay.wifiSsid) {
     lines.push(`Wi-Fi: ${stay.wifiSsid}${stay.wifiPassword ? ' / ' + stay.wifiPassword : ''}`)
   }
@@ -149,9 +152,23 @@ export function formatDay(day: Day): string {
   return lines.join('\n')
 }
 
+export function formatEventInvite(trip: Trip): string {
+  const lines = [formatTripHeader(trip)]
+  if (trip.tagline) lines.push(trip.tagline)
+  lines.push('')
+  lines.push(`When: ${formatDateRange(trip.startDate, trip.endDate)}`)
+  lines.push(`Where: ${trip.stay.name}`)
+  lines.push(trip.stay.address)
+  if (trip.stay.notes) {
+    lines.push('')
+    lines.push(trip.stay.notes)
+  }
+  return lines.join('\n')
+}
+
 export function formatItinerary(trip: Trip): string {
   const lines: string[] = []
-  lines.push(`🗓️ Itinerary — ${trip.name}`)
+  lines.push(`${trip.kind === 'event' ? '🗓️ Schedule' : '🗓️ Itinerary'} — ${trip.name}`)
   lines.push('')
   for (const day of trip.itinerary) {
     lines.push(formatDay(day))
@@ -190,6 +207,27 @@ export function formatChecklist(items: ChecklistItem[]): string {
   return lines.join('\n')
 }
 
+export function formatEventFoodList(items: EventFoodItem[], title = 'Food & Drinks'): string {
+  const byCat = new Map<string, EventFoodItem[]>()
+  for (const it of items) {
+    const list = byCat.get(it.category) ?? []
+    list.push(it)
+    byCat.set(it.category, list)
+  }
+  const lines: string[] = [`🍽️ ${title}`]
+  for (const [cat, list] of byCat) {
+    lines.push('')
+    lines.push(cat)
+    for (const it of list) {
+      const quantity = it.quantity ? ` (${it.quantity})` : ''
+      const assigned = it.assignedTo ? ` — ${it.assignedTo}` : ''
+      lines.push(`• ${it.title}${quantity}${assigned}`)
+      if (it.notes) lines.push(`  ${it.notes}`)
+    }
+  }
+  return lines.join('\n')
+}
+
 export function formatPackingList(items: PackingItem[], title = 'Packing List'): string {
   const byCat = new Map<string, PackingItem[]>()
   for (const it of items) {
@@ -209,6 +247,10 @@ export function formatPackingList(items: PackingItem[], title = 'Packing List'):
     }
   }
   return lines.join('\n')
+}
+
+export function formatCopyBlocks(blocks: CopyBlock[]): string {
+  return blocks.map((block) => `${block.title}\n${block.body}`).join('\n\n')
 }
 
 export function formatBudget(items: BudgetItem[], currency: string): string {

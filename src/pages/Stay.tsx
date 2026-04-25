@@ -16,19 +16,22 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 export default function Stay() {
   const trip = useTrip()
   const stay = trip.stay
+  const isEvent = trip.kind === 'event'
 
   return (
     <div className="space-y-6">
       <header className="space-y-1">
-        <h1 className="text-3xl font-bold">Stay & Bookings</h1>
-        <p className="text-slate-600">Where we’re staying and every reservation in one place.</p>
+        <h1 className="text-3xl font-bold">{isEvent ? 'Location & Details' : 'Stay & Bookings'}</h1>
+        <p className="text-slate-600">
+          {isEvent ? 'Where it is, when it starts, and any reservations.' : 'Where we’re staying and every reservation in one place.'}
+        </p>
       </header>
 
       <Section
-        title="Where we’re staying"
-        icon="🏠"
+        title={isEvent ? 'Location' : 'Where we’re staying'}
+        icon={isEvent ? '📍' : '🏠'}
         copyText={formatStay(stay, trip)}
-        copyLabel="Copy stay details"
+        copyLabel={isEvent ? 'Copy location' : 'Copy stay details'}
       >
         <InfoRow label="Name">{stay.name}</InfoRow>
         <InfoRow label="Address">
@@ -41,8 +44,8 @@ export default function Stay() {
             {stay.address}
           </a>
         </InfoRow>
-        <InfoRow label="Check-in">{stay.checkIn}</InfoRow>
-        <InfoRow label="Check-out">{stay.checkOut}</InfoRow>
+        <InfoRow label={isEvent ? 'Starts' : 'Check-in'}>{stay.checkIn}</InfoRow>
+        <InfoRow label={isEvent ? 'Ends' : 'Check-out'}>{stay.checkOut}</InfoRow>
         {stay.wifiSsid && (
           <InfoRow label="Wi-Fi">
             <span className="font-mono bg-slate-100 rounded px-2 py-0.5 inline-block">
@@ -99,7 +102,11 @@ export default function Stay() {
 
       <Section title="Bookings" icon="🎟️">
         {trip.bookings.length === 0 && (
-          <EmptyState icon="🎟️" title="No bookings yet" body="Flights, cars, and reservations will show up here." />
+          <EmptyState
+            icon="🎟️"
+            title={isEvent ? 'No reservations yet' : 'No bookings yet'}
+            body={isEvent ? 'Venue, rentals, or other reservations will show up here.' : 'Flights, cars, and reservations will show up here.'}
+          />
         )}
         <ul className="space-y-3">
           {trip.bookings.map((b) => {

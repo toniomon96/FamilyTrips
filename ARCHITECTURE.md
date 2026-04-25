@@ -8,13 +8,14 @@ Family Trips is a static-first Vite + React app. The production artifact is a cl
 - `src/data/trips/index.ts` registers trips, returns direct trip lookups, filters unlisted trips for `/`, and sorts listed trips by active/upcoming/past dates.
 - React Router owns the route tree: `/` lists trips, and `/:tripSlug` plus child routes render one trip.
 - Shared trip context is provided by `src/components/Layout.tsx` and consumed by trip pages.
-- Packing is code-defined trip content. It is exposed as `/:tripSlug/packing` and linked from the trip home quick links, not the bottom nav.
+- Packing and event supplies are code-defined content. They are exposed as `/:tripSlug/packing` and linked from the home quick links, not the bottom nav.
+- Events use the same static trip object with `kind: 'event'` plus optional food, supplies, event tasks, and copy blocks. The goal is a casual planning hub, not a separate event product.
 
 ## Dynamic State
 
 Checklist done state, packing packed state, and user-added checklist items can sync through Supabase when `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are configured. Without those env vars, changes are session-only in the current browser.
 
-Packing reuses `checklist_state` with namespaced item IDs such as `packing:pk-docs-id`. User-added checklist items still live in `checklist_items`.
+Packing reuses `checklist_state` with namespaced item IDs such as `packing:pk-docs-id`. Event supplies use `supplies:<supplyItemId>`. User-added checklist items still live in `checklist_items`.
 
 The Supabase integration is intentionally no-login and casual. It should remain scoped by trip slug in client queries, but it is not an access-control boundary.
 
@@ -29,6 +30,7 @@ Use these checks before shipping behavior changes:
 ```bash
 npm run lint
 npm run test
+npm run validate:data
 npm run build
 ```
 

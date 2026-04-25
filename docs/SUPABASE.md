@@ -121,6 +121,8 @@ using (true);
 
 - Code-defined checklist items use their checklist item ID directly in `checklist_state.item_id`.
 - Packing items reuse `checklist_state` with namespaced IDs: `packing:<packingItemId>`.
+- Event supplies reuse `checklist_state` with namespaced IDs: `supplies:<supplyItemId>`.
+- Event tasks use their task ID directly in `checklist_state.item_id`, the same as checklist items.
 - User-added checklist items live in `checklist_items`; their done state also lives in `checklist_state` by item ID.
 - When Supabase is not configured, checklist and packing changes use `sessionStorage` for the current browser session. Those local changes are not uploaded later if Supabase env vars are added.
 

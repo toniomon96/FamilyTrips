@@ -9,8 +9,9 @@ export function useAllTripsProgress(trips: Trip[]): Map<string, TripProgress> {
     // seed from code-defined done flags so we show something even pre-fetch
     const seed = new Map<string, TripProgress>()
     for (const t of trips) {
-      const done = t.checklist.filter((i) => i.done).length
-      seed.set(t.slug, { done, total: t.checklist.length })
+      const codeItems = [...t.checklist, ...(t.eventTasks ?? [])]
+      const done = codeItems.filter((i) => i.done).length
+      seed.set(t.slug, { done, total: codeItems.length })
     }
     return seed
   })
@@ -47,7 +48,7 @@ export function useAllTripsProgress(trips: Trip[]): Map<string, TripProgress> {
         let done = 0
         let total = 0
 
-        for (const codeItem of trip.checklist) {
+        for (const codeItem of [...trip.checklist, ...(trip.eventTasks ?? [])]) {
           total += 1
           const override = stateForTrip.get(codeItem.id)
           const effectiveDone = override ?? codeItem.done

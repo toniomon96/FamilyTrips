@@ -80,7 +80,7 @@ Packing reuses `checklist_state` with namespaced item IDs like `packing:pk-docs-
 
 The Supabase posture is intentionally casual: anon clients can read/write checklist rows for shared family links. Keep the app deployed only where that tradeoff is acceptable. Code should always query by the current registered trip slugs or direct trip slug, but this is not authentication.
 
-See `docs/SUPABASE.md` for setup SQL, `docs/DEPLOY_SMOKE_TEST.md` for post-deploy checks, and `ROADMAP.md` for the practical next-wave plan.
+See `docs/SUPABASE.md` for setup SQL, `docs/DEPLOY_SMOKE_TEST.md` for post-deploy checks, `docs/TEMPLATES.md` for starter outlines, and `ROADMAP.md` for the practical next-wave plan.
 
 ## Privacy model
 

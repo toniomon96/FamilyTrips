@@ -18,6 +18,7 @@ For a listed trip and `/logan-bachelor`, check:
 - Stay and People links open safely in a new tab where appropriate.
 - Budget shows `TBD` instead of `$0` for unknown costs.
 - Packing shows grouped items, progress, and copy buttons.
+- `/family-cookout` opens by direct URL, stays off `/`, and shows event labels, food, supplies, tasks, and copy buttons.
 
 ## Checklist And Packing State
 
@@ -47,3 +48,4 @@ At roughly 390px wide:
 
 - Confirm `manifest.webmanifest` loads.
 - Confirm Vercel SPA rewrites serve direct URLs like `/okc/packing`.
+- Confirm Vercel SPA rewrites serve unlisted event URLs like `/family-cookout`.

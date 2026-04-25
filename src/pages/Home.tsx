@@ -17,20 +17,30 @@ function todaysDay(trip: ReturnType<typeof useTrip>) {
 
 export default function Home() {
   const trip = useTrip()
+  const isEvent = trip.kind === 'event'
   const basePath = `/${trip.slug}`
   const left = daysUntil(trip.startDate)
   const tripStarted = left <= 0
   const tripEnded = daysUntil(trip.endDate) < 0
   const today = todaysDay(trip)
 
-  const quickLinks: { to: string; label: string; icon: string; hint: string }[] = [
-    { to: 'trip', label: 'Itinerary', icon: '🗓️', hint: 'Day-by-day plan' },
-    { to: 'stay', label: 'Stay & Bookings', icon: '🛏️', hint: 'Address, Wi-Fi, flights' },
-    { to: 'people', label: 'People', icon: '👪', hint: 'Who’s coming' },
-    { to: 'checklist', label: 'Checklist', icon: '✅', hint: 'What’s done, what’s not' },
-    { to: 'packing', label: 'Packing', icon: '🎒', hint: 'What to bring' },
-    { to: 'budget', label: 'Budget', icon: '💰', hint: 'Costs & per-person split' },
-  ]
+  const quickLinks: { to: string; label: string; icon: string; hint: string }[] = isEvent
+    ? [
+        { to: 'trip', label: 'Schedule', icon: '🗓️', hint: 'Day-of plan' },
+        ...(trip.food?.length ? [{ to: 'trip#food', label: 'Food', icon: '🍽️', hint: 'What we’re eating' }] : []),
+        ...(trip.supplies?.length ? [{ to: 'packing', label: 'Supplies', icon: '🎒', hint: 'What to bring' }] : []),
+        ...((trip.eventTasks?.length || trip.checklist.length) ? [{ to: 'checklist', label: 'Tasks', icon: '✅', hint: 'Setup, shopping, cleanup' }] : []),
+        { to: 'people', label: 'People', icon: '👪', hint: 'Who’s coming' },
+        ...(trip.budget.length ? [{ to: 'budget', label: 'Budget', icon: '💰', hint: 'Casual costs' }] : []),
+      ]
+    : [
+        { to: 'trip', label: 'Itinerary', icon: '🗓️', hint: 'Day-by-day plan' },
+        { to: 'stay', label: 'Stay & Bookings', icon: '🛏️', hint: 'Address, Wi-Fi, flights' },
+        { to: 'people', label: 'People', icon: '👪', hint: 'Who’s coming' },
+        { to: 'checklist', label: 'Checklist', icon: '✅', hint: 'What’s done, what’s not' },
+        { to: 'packing', label: 'Packing', icon: '🎒', hint: 'What to bring' },
+        { to: 'budget', label: 'Budget', icon: '💰', hint: 'Costs & per-person split' },
+      ]
 
   return (
     <div className="space-y-6">
@@ -64,7 +74,9 @@ export default function Home() {
           </>
         ) : (
           <>
-            <p className="text-blue-100 text-sm uppercase tracking-wide">Trip starts in</p>
+            <p className="text-blue-100 text-sm uppercase tracking-wide">
+              {isEvent ? 'Event starts in' : 'Trip starts in'}
+            </p>
             <p className="text-6xl font-bold leading-none mt-2">{left}</p>
             <p className="text-blue-100 mt-1">day{left === 1 ? '' : 's'}</p>
           </>
@@ -109,7 +121,11 @@ export default function Home() {
       </div>
 
       <div className="flex justify-center pt-2">
-        <CopyButton text={formatTripOverview(trip)} label="Share trip summary" size="md" />
+        <CopyButton
+          text={formatTripOverview(trip)}
+          label={isEvent ? 'Share event summary' : 'Share trip summary'}
+          size="md"
+        />
       </div>
     </div>
   )

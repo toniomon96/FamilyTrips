@@ -1,5 +1,7 @@
 export type BookingKind = 'flight' | 'stay' | 'car' | 'activity' | 'other'
 
+export type PlanKind = 'trip' | 'event'
+
 export type Booking = {
   id: string
   kind: BookingKind
@@ -85,6 +87,21 @@ export type PackingItem = {
   assignedTo?: string
 }
 
+export type EventFoodItem = {
+  id: string
+  title: string
+  category: string
+  quantity?: string
+  assignedTo?: string
+  notes?: string
+}
+
+export type CopyBlock = {
+  id: string
+  title: string
+  body: string
+}
+
 export type BudgetItem = {
   id: string
   name: string
@@ -96,6 +113,7 @@ export type BudgetItem = {
 
 export type Trip = {
   slug: string
+  kind?: PlanKind
   name: string
   location: string
   startDate: string
@@ -112,6 +130,10 @@ export type Trip = {
   contacts: Contact[]
   checklist: ChecklistItem[]
   packing?: PackingItem[]
+  food?: EventFoodItem[]
+  supplies?: PackingItem[]
+  eventTasks?: ChecklistItem[]
+  copyBlocks?: CopyBlock[]
   budget: BudgetItem[]
   map?: {
     embedUrl?: string

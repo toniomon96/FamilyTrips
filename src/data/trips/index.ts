@@ -2,12 +2,14 @@ import type { Trip } from '../../types/trip'
 import { stpete } from './stpete'
 import { okc } from './okc'
 import { loganBachelor } from './logan-bachelor'
+import { familyCookout } from './family-cookout'
 import { todayLocalISO } from '../../utils/formatters'
 
 export const trips: Record<string, Trip> = {
   [stpete.slug]: stpete,
   [okc.slug]: okc,
   [loganBachelor.slug]: loganBachelor,
+  [familyCookout.slug]: familyCookout,
 }
 
 export function getTrip(slug?: string): Trip | undefined {

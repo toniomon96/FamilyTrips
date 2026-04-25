@@ -11,7 +11,7 @@ Family Trips is a casual shared planning hub for trips and family events. The go
 
 ## Next
 
-- Add lightweight event support for cookouts, birthdays, get-togethers, and family gatherings without changing the app into SaaS.
+- Add lightweight event support for cookouts, birthdays, get-togethers, and family gatherings without changing the app into SaaS. Initial support is based on `kind: 'event'`, event food, supplies, tasks, and copy blocks.
 - Keep event planning in the same vibe as trips: one shared link, simple pages, no accounts, no admin screens, and copy buttons for group chat.
 - Add event-friendly content where it naturally helps:
   - Schedule or day-of plan
@@ -25,10 +25,10 @@ Family Trips is a casual shared planning hub for trips and family events. The go
 
 ## Later
 
-- Code-split route pages if the Vite bundle-size warning becomes annoying or page load feels slow.
-- Add stronger validation for duplicate IDs, malformed links, phone numbers, dates, and required trip/event fields.
+- Keep route code-splitting healthy if more pages are added.
+- Keep data validation current for duplicate IDs, malformed links, phone numbers, dates, and required trip/event fields.
 - Add editable packing items if packing starts changing often during live planning.
-- Add starter templates for common plans like beach trip, road trip, cookout, birthday, and bachelor weekend.
+- Expand starter templates for common plans like beach trip, road trip, cookout, birthday, and bachelor weekend as real examples emerge.
 - Consider stronger privacy only if a specific trip or event needs it. Until then, keep sensitive details out of client-side trip data when needed.
 
 ## Principles

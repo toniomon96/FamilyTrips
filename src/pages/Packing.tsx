@@ -5,7 +5,7 @@ import CopyButton from '../components/CopyButton'
 import EmptyState from '../components/EmptyState'
 import SyncStatusChip from '../components/SyncStatusChip'
 import { formatPackingList } from '../utils/formatters'
-import { packingStateKey } from '../utils/packing'
+import { packingStateKey, suppliesStateKey } from '../utils/packing'
 import { useChecklistState } from '../hooks/useChecklistState'
 import { useActor } from '../hooks/useActor'
 import type { PackingItem } from '../types/trip'
@@ -32,21 +32,27 @@ type MergedPackingItem = PackingItem & {
 
 export default function Packing() {
   const trip = useTrip()
+  const isEvent = trip.kind === 'event'
   const { actorId } = useActor(trip.slug)
   const { dbRows, status, toggle } = useChecklistState(trip.slug, actorId)
 
   const items = useMemo<MergedPackingItem[]>(
-    () =>
-      (trip.packing ?? []).map((item) => {
-        const stateKey = packingStateKey(item.id)
+    () => {
+      const packableItems = [
+        ...(trip.packing ?? []).map((item) => ({ item, stateKey: packingStateKey(item.id) })),
+        ...(trip.supplies ?? []).map((item) => ({ item, stateKey: suppliesStateKey(item.id) })),
+      ]
+
+      return packableItems.map(({ item, stateKey }) => {
         const row = dbRows.get(stateKey)
         return {
           ...item,
           packed: row ? row.done : item.packed ?? false,
           stateKey,
         }
-      }),
-    [trip.packing, dbRows],
+      })
+    },
+    [trip.packing, trip.supplies, dbRows],
   )
 
   const grouped = useMemo(() => {
@@ -66,9 +72,9 @@ export default function Packing() {
   return (
     <div className="space-y-6">
       <header className="space-y-1">
-        <h1 className="text-3xl font-bold">Packing</h1>
+        <h1 className="text-3xl font-bold">{isEvent ? 'Supplies' : 'Packing'}</h1>
         <p className="text-slate-600">
-          What to bring — {packed} of {total} packed ({pct}%).
+          {isEvent ? 'What to bring' : 'What to bring'} — {packed} of {total} packed ({pct}%).
         </p>
         <p className="text-sm text-slate-500">
           Tap any item as it goes in the bag. Supabase syncs when configured; otherwise changes stay in this browser session.
@@ -78,7 +84,7 @@ export default function Packing() {
       {total > 0 && (
         <div className="rounded-3xl bg-white border border-slate-200 p-5 shadow-sm space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm text-slate-600">Packing progress</span>
+            <span className="text-sm text-slate-600">{isEvent ? 'Supply progress' : 'Packing progress'}</span>
             <div className="flex items-center gap-2">
               <SyncStatusChip status={status} />
               <span className="font-semibold">{pct}%</span>
@@ -96,8 +102,8 @@ export default function Packing() {
       {total === 0 && (
         <EmptyState
           icon="🎒"
-          title="Packing list TBD"
-          body="Add packing items to this trip file when the list is ready."
+          title={isEvent ? 'Supply list TBD' : 'Packing list TBD'}
+          body={isEvent ? 'Add supplies to this event file when the list is ready.' : 'Add packing items to this trip file when the list is ready.'}
         />
       )}
 
@@ -106,7 +112,7 @@ export default function Packing() {
           key={cat}
           title={cat}
           icon={CATEGORY_ICONS[cat] ?? '🎒'}
-          copyText={formatPackingList(list, `${trip.name} Packing`)}
+          copyText={formatPackingList(list, `${trip.name} ${isEvent ? 'Supplies' : 'Packing'}`)}
           copyLabel="Copy section"
         >
           <ul className="divide-y divide-slate-100">
@@ -152,8 +158,8 @@ export default function Packing() {
       {total > 0 && (
         <div className="flex justify-center">
           <CopyButton
-            text={formatPackingList(items, `${trip.name} Packing`)}
-            label="Copy full packing list"
+            text={formatPackingList(items, `${trip.name} ${isEvent ? 'Supplies' : 'Packing'}`)}
+            label={isEvent ? 'Copy full supply list' : 'Copy full packing list'}
             size="md"
           />
         </div>

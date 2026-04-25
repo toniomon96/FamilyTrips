@@ -261,6 +261,7 @@ function EditItemForm({ item, categories, onSubmit, onCancel }: EditFormProps) {
 
 export default function Checklist() {
   const trip = useTrip()
+  const isEvent = trip.kind === 'event'
   const { actorId, setActor } = useActor(trip.slug)
   const { dbRows, status, toggle } = useChecklistState(trip.slug, actorId)
   const { items: dbItems, syncEnabled, addItem, updateItem, deleteItem } = useChecklistItems(
@@ -273,7 +274,8 @@ export default function Checklist() {
   const [showPicker, setShowPicker] = useState(false)
 
   const mergedItems: MergedItem[] = useMemo(() => {
-    const codeItems: MergedItem[] = trip.checklist.map((it) => {
+    const sourceItems = [...trip.checklist, ...(trip.eventTasks ?? [])]
+    const codeItems: MergedItem[] = sourceItems.map((it) => {
       const row = dbRows.get(it.id)
       return {
         ...it,
@@ -297,7 +299,7 @@ export default function Checklist() {
       }
     })
     return [...codeItems, ...userItems]
-  }, [trip.checklist, dbRows, dbItems])
+  }, [trip.checklist, trip.eventTasks, dbRows, dbItems])
 
   const grouped = useMemo(() => {
     const map = new Map<string, MergedItem[]>()
@@ -338,12 +340,12 @@ export default function Checklist() {
   return (
     <div className="space-y-6">
       <header className="space-y-1">
-        <h1 className="text-3xl font-bold">Checklist</h1>
+        <h1 className="text-3xl font-bold">{isEvent ? 'Tasks' : 'Checklist'}</h1>
         <p className="text-slate-600">
-          Live trip prep — {done} of {total} done ({pct}%).
+          {isEvent ? 'Event prep' : 'Live trip prep'} — {done} of {total} done ({pct}%).
         </p>
         <p className="text-sm text-slate-500">
-          Tap any item to toggle. {syncEnabled ? 'Changes sync to everyone viewing the trip.' : 'Changes stay in this browser session until Supabase is configured.'}
+          Tap any item to toggle. {syncEnabled ? 'Changes sync to everyone viewing this plan.' : 'Changes stay in this browser session until Supabase is configured.'}
         </p>
         {actorId && !showPicker && (
           <ActorBadge
@@ -387,8 +389,8 @@ export default function Checklist() {
       {total === 0 && (
         <EmptyState
           icon="✅"
-          title="No checklist yet"
-          body="Add your first item below — or items will show up here once they’re added in code."
+          title={isEvent ? 'No tasks yet' : 'No checklist yet'}
+          body={isEvent ? 'Add your first task below — or event tasks will show up here once they’re added in code.' : 'Add your first item below — or items will show up here once they’re added in code.'}
         />
       )}
 
@@ -496,7 +498,7 @@ export default function Checklist() {
           <p className="text-sm text-slate-500">
             Anything else to track? Add it
             {syncEnabled
-              ? ` and the whole family will see it sync live${currentActorName ? ` as ${currentActorName}` : ''}.`
+              ? ` and everyone will see it sync live${currentActorName ? ` as ${currentActorName}` : ''}.`
               : ' for this browser session. It will not sync across devices until Supabase is configured.'}
           </p>
         )}
