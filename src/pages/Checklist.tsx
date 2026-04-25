@@ -497,7 +497,7 @@ export default function Checklist() {
             Anything else to track? Add it
             {syncEnabled
               ? ` and the whole family will see it sync live${currentActorName ? ` as ${currentActorName}` : ''}.`
-              : ' for this browser session. It will not persist after a refresh until Supabase is configured.'}
+              : ' for this browser session. It will not sync across devices until Supabase is configured.'}
           </p>
         )}
       </div>
