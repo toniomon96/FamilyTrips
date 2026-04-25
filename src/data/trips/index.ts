@@ -2,6 +2,7 @@ import type { Trip } from '../../types/trip'
 import { stpete } from './stpete'
 import { okc } from './okc'
 import { loganBachelor } from './logan-bachelor'
+import { todayLocalISO } from '../../utils/formatters'
 
 export const trips: Record<string, Trip> = {
   [stpete.slug]: stpete,
@@ -19,14 +20,6 @@ export function listTrips(): Trip[] {
 
 export function listListedTrips(): Trip[] {
   return listTrips().filter((trip) => trip.visibility !== 'unlisted')
-}
-
-function todayLocalISO(): string {
-  const d = new Date()
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
 }
 
 export function listTripsSorted(): Trip[] {

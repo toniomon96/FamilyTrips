@@ -395,6 +395,7 @@ export const loganBachelor: Trip = {
       name: 'Recovery block',
       total: 0,
       splitCount: 1,
+      status: 'tbd',
       notes: 'Placeholder - update after booking IV / sauna / cold plunge.',
     },
     {
@@ -402,6 +403,7 @@ export const loganBachelor: Trip = {
       name: 'Golf',
       total: 0,
       splitCount: 1,
+      status: 'tbd',
       notes: 'Placeholder - update after tee time is locked.',
     },
     {
@@ -409,6 +411,7 @@ export const loganBachelor: Trip = {
       name: 'Saturday nice dinner',
       total: 0,
       splitCount: 1,
+      status: 'tbd',
       notes: 'Placeholder - actual cost handled after the reservation / bill.',
     },
   ],

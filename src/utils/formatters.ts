@@ -27,15 +27,55 @@ export function formatDateRange(startIso: string, endIso: string): string {
   return `${formatShortDate(startIso)} – ${formatShortDate(endIso)}`
 }
 
+export function todayLocalISO(): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function daysBetweenLocalDates(fromIso: string, toIso: string): number {
+  const [fromY, fromM, fromD] = fromIso.split('-').map(Number)
+  const [toY, toM, toD] = toIso.split('-').map(Number)
+  const from = Date.UTC(fromY, fromM - 1, fromD)
+  const to = Date.UTC(toY, toM - 1, toD)
+  return Math.round((to - from) / (1000 * 60 * 60 * 24))
+}
+
 export function daysUntil(iso: string): number {
-  const now = new Date()
-  const target = new Date(iso + 'T12:00:00')
-  const diff = target.getTime() - now.getTime()
-  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+  return daysBetweenLocalDates(todayLocalISO(), iso)
 }
 
 export function formatMoney(amount: number, currency: string): string {
   return `${currency}${amount.toLocaleString('en-US')}`
+}
+
+export function isBudgetTbd(item: BudgetItem): boolean {
+  return item.status === 'tbd'
+}
+
+export function budgetAmount(item: BudgetItem): number {
+  return isBudgetTbd(item) ? 0 : item.total
+}
+
+export function budgetShare(item: BudgetItem): number {
+  if (isBudgetTbd(item)) return 0
+  return item.total / item.splitCount
+}
+
+export function formatBudgetAmount(item: BudgetItem, currency: string): string {
+  return isBudgetTbd(item) ? 'TBD' : formatMoney(item.total, currency)
+}
+
+export function formatBudgetShare(item: BudgetItem, currency: string): string {
+  return isBudgetTbd(item)
+    ? 'TBD/person'
+    : `${formatMoney(Math.round(budgetShare(item)), currency)}/person`
+}
+
+export function formatSplitCount(count: number): string {
+  return `${count} ${count === 1 ? 'way' : 'ways'}`
 }
 
 export function formatTripHeader(trip: Trip): string {
@@ -103,6 +143,7 @@ export function formatDay(day: Day): string {
     lines.push(`• ${time}${item.title}`)
     if (item.address) lines.push(`  ${item.address}`)
     if (item.notes) lines.push(`  ${item.notes}`)
+    if (item.link) lines.push(`  ${item.link}`)
   }
   return lines.join('\n')
 }
@@ -149,16 +190,18 @@ export function formatChecklist(items: ChecklistItem[]): string {
 }
 
 export function formatBudget(items: BudgetItem[], currency: string): string {
-  const total = items.reduce((s, i) => s + i.total, 0)
-  const perPerson = items.reduce((s, i) => s + i.total / i.splitCount, 0)
+  const total = items.reduce((s, i) => s + budgetAmount(i), 0)
+  const perPerson = items.reduce((s, i) => s + budgetShare(i), 0)
+  const hasKnownItems = items.some((item) => !isBudgetTbd(item))
   const lines: string[] = ['💰 Trip Budget']
   for (const i of items) {
-    const share = i.total / i.splitCount
-    lines.push(`• ${i.name}: ${formatMoney(i.total, currency)} (split ${i.splitCount} = ${formatMoney(Math.round(share), currency)}/person)`)
+    lines.push(
+      `• ${i.name}: ${formatBudgetAmount(i, currency)} (split ${formatSplitCount(i.splitCount)} = ${formatBudgetShare(i, currency)})`,
+    )
   }
   lines.push('')
-  lines.push(`Total: ${formatMoney(total, currency)}`)
-  lines.push(`Your share: ${formatMoney(Math.round(perPerson), currency)}`)
+  lines.push(`Total: ${hasKnownItems ? formatMoney(total, currency) : 'TBD'}`)
+  lines.push(`Your share: ${hasKnownItems ? formatMoney(Math.round(perPerson), currency) : 'TBD'}`)
   return lines.join('\n')
 }
 

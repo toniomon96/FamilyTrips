@@ -17,13 +17,15 @@ export function useAllTripsProgress(trips: Trip[]): Map<string, TripProgress> {
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return
+    const tripSlugs = trips.map((trip) => trip.slug)
+    if (tripSlugs.length === 0) return
 
     let cancelled = false
     const sb = supabase
 
     Promise.all([
-      sb.from('checklist_state').select('trip_slug,item_id,done'),
-      sb.from('checklist_items').select('id,trip_slug'),
+      sb.from('checklist_state').select('trip_slug,item_id,done').in('trip_slug', tripSlugs),
+      sb.from('checklist_items').select('id,trip_slug').in('trip_slug', tripSlugs),
     ]).then(([stateRes, itemsRes]) => {
       if (cancelled) return
 

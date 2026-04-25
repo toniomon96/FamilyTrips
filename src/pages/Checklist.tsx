@@ -39,7 +39,7 @@ function StatusChip({ status }: { status: ChecklistStatus }) {
   }
   const label: Record<Exclude<ChecklistStatus, 'online'>, string> = {
     saving: 'Saving…',
-    offline: 'Offline · changes won’t sync',
+    offline: 'Offline · changes stay here',
     error: 'Couldn’t save · try again',
   }
   return (
@@ -284,7 +284,7 @@ export default function Checklist() {
   const trip = useTrip()
   const { actorId, setActor } = useActor(trip.slug)
   const { dbRows, status, toggle } = useChecklistState(trip.slug, actorId)
-  const { items: dbItems, addItem, updateItem, deleteItem } = useChecklistItems(
+  const { items: dbItems, syncEnabled, addItem, updateItem, deleteItem } = useChecklistItems(
     trip.slug,
     actorId,
   )
@@ -364,7 +364,7 @@ export default function Checklist() {
           Live trip prep — {done} of {total} done ({pct}%).
         </p>
         <p className="text-sm text-slate-500">
-          Tap any item to toggle. Changes sync to everyone viewing the trip.
+          Tap any item to toggle. {syncEnabled ? 'Changes sync to everyone viewing the trip.' : 'Changes stay in this browser session until Supabase is configured.'}
         </p>
         {actorId && !showPicker && (
           <ActorBadge
@@ -515,8 +515,10 @@ export default function Checklist() {
         )}
         {!adding && (
           <p className="text-sm text-slate-500">
-            Anything else to track? Add it and the whole family will see it sync live
-            {currentActorName ? ` as ${currentActorName}` : ''}.
+            Anything else to track? Add it
+            {syncEnabled
+              ? ` and the whole family will see it sync live${currentActorName ? ` as ${currentActorName}` : ''}.`
+              : ' for this browser session. It will not persist after a refresh until Supabase is configured.'}
           </p>
         )}
       </div>

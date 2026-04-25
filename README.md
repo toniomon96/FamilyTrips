@@ -55,6 +55,7 @@ npm install      # install dependencies
 npm run dev      # dev server at http://localhost:5173
 npm run build    # typecheck + production build into dist/
 npm run lint     # eslint
+npm run test     # focused unit tests for fragile trip rules
 npm run preview  # preview the production build
 ```
 
@@ -67,9 +68,20 @@ The checklist is backed by Supabase so toggles sync across devices in real time.
 
 Set both in Vercel → Project Settings → Environment Variables (Production + Preview + Development). Trigger a redeploy after saving — Vite bakes env vars at build time.
 
-For local dev, copy `.env.example` to `.env.local` and fill in the same values. If the vars are missing, checkbox toggles still work in the current browser session but don't persist anywhere.
+For local dev, copy `.env.example` to `.env.local` and fill in the same values. If the vars are missing, checkbox toggles and user-added checklist items still work in the current browser session but are not permanent.
 
-The `checklist_state` table is intentionally open (anon reads + writes, no delete grant). It's scoped to family use where anyone with the URL is trusted. No PII stored.
+The checklist uses two tables:
+
+- `checklist_state` — one row per trip + checklist item, storing done state and the selected actor.
+- `checklist_items` — user-added checklist items for a trip, including title, category, notes, and creator actor.
+
+The Supabase posture is intentionally casual: anon clients can read/write checklist rows for shared family links. Keep the app deployed only where that tradeoff is acceptable. Code should always query by the current registered trip slugs or direct trip slug, but this is not authentication.
+
+## Privacy model
+
+This is a static client-side app. Anything in `src/data/trips` is shipped in the built JavaScript bundle, including unlisted trips, names, phone numbers, addresses, reservation details, passwords, and budgets. `visibility: 'unlisted'` only hides a trip from the rendered `/` index; anyone who can load the app bundle or has the direct URL can see the data.
+
+That is fine for the current casual family-use case, especially while the site is not advertised. If a future trip needs real privacy, do not put sensitive details in trip objects; move that trip behind authenticated storage or keep those details in the group chat.
 
 ## Deploying
 
@@ -81,5 +93,4 @@ Vercel (recommended): connect the repo, no config needed — `vercel.json` alrea
 
 ## What’s explicitly not here (yet)
 
-- Adding / editing / deleting checklist items from the UI — items still live in code, only the `done` state is dynamic.
 - Cost-splitting edits, live itinerary edits, "who booked what" comments. Those belong in the group chat for now.

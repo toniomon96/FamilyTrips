@@ -7,6 +7,8 @@ const items: Item[] = [
   { to: 'trip', label: 'Trip', icon: '🗓️' },
   { to: 'stay', label: 'Stay', icon: '🛏️' },
   { to: 'people', label: 'People', icon: '👪' },
+  { to: 'checklist', label: 'List', icon: '✅' },
+  { to: 'budget', label: 'Budget', icon: '💰' },
 ]
 
 export default function BottomNav({ basePath }: { basePath: string }) {
@@ -25,12 +27,12 @@ export default function BottomNav({ basePath }: { basePath: string }) {
                 to={to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `flex flex-col items-center justify-center gap-1 py-3 min-h-[60px] text-xs font-medium transition-colors ${
+                  `flex flex-col items-center justify-center gap-1 px-1 py-2 min-h-[60px] text-[0.68rem] sm:text-xs font-medium transition-colors ${
                     isActive ? 'text-blue-700' : 'text-slate-600'
                   }`
                 }
               >
-                <span aria-hidden className="text-2xl leading-none">{item.icon}</span>
+                <span aria-hidden className="text-xl sm:text-2xl leading-none">{item.icon}</span>
                 <span>{item.label}</span>
               </NavLink>
             </li>

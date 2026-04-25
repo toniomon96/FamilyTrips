@@ -80,6 +80,7 @@ export type BudgetItem = {
   name: string
   total: number
   splitCount: number
+  status?: 'confirmed' | 'estimate' | 'tbd'
   notes?: string
 }
 
