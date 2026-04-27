@@ -1,0 +1,25 @@
+repo_id: family-trips
+display_name: "FamilyTrips"
+repo_type: internal-product
+owner: toni
+client_id: null
+engagement_id: null
+sensitivity_tier: 2
+domains:
+  - travel
+  - shareable-workflows
+  - static-data
+  - ux-prototyping
+allowed_context_consumers:
+  - hub-indexer
+  - cross-engagement-agents
+artifact_roots:
+  - docs/
+  - scripts/
+source_of_truth_files:
+  - README.md
+  - ARCHITECTURE.md
+  - package.json
+status: active
+created_at: 2026-04-27
+last_verified_at: 2026-04-27
