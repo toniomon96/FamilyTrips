@@ -2,6 +2,9 @@ repo_id: family-trips
 display_name: "FamilyTrips"
 repo_type: internal-product
 owner: toni
+github_owner: Toni-Montez-Consulting
+github_repo: FamilyTrips
+github_url: https://github.com/Toni-Montez-Consulting/FamilyTrips
 client_id: null
 engagement_id: null
 sensitivity_tier: 2
