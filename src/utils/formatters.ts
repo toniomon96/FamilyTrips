@@ -51,7 +51,11 @@ export function daysUntil(iso: string): number {
 }
 
 export function formatMoney(amount: number, currency: string): string {
-  return `${currency}${amount.toLocaleString('en-US')}`
+  const rounded = Math.round((amount + Number.EPSILON) * 100) / 100
+  return `${currency}${rounded.toLocaleString('en-US', {
+    minimumFractionDigits: Number.isInteger(rounded) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`
 }
 
 export function isBudgetTbd(item: BudgetItem): boolean {
@@ -73,8 +77,8 @@ export function formatBudgetAmount(item: BudgetItem, currency: string): string {
 
 export function formatBudgetShare(item: BudgetItem, currency: string): string {
   return isBudgetTbd(item)
-    ? 'TBD/person'
-    : `${formatMoney(Math.round(budgetShare(item)), currency)}/person`
+    ? 'Excluded from total'
+    : `${formatMoney(budgetShare(item), currency)}/share`
 }
 
 export function formatSplitCount(count: number): string {
@@ -255,17 +259,23 @@ export function formatCopyBlocks(blocks: CopyBlock[]): string {
 
 export function formatBudget(items: BudgetItem[], currency: string): string {
   const total = items.reduce((s, i) => s + budgetAmount(i), 0)
-  const perPerson = items.reduce((s, i) => s + budgetShare(i), 0)
   const hasKnownItems = items.some((item) => !isBudgetTbd(item))
+  const hasTbdItems = items.some(isBudgetTbd)
+  const hasEstimateItems = items.some((item) => item.status === 'estimate')
   const lines: string[] = ['💰 Trip Budget']
   for (const i of items) {
-    lines.push(
-      `• ${i.name}: ${formatBudgetAmount(i, currency)} (split ${formatSplitCount(i.splitCount)} = ${formatBudgetShare(i, currency)})`,
-    )
+    if (isBudgetTbd(i)) {
+      lines.push(`• ${i.name}: TBD / optional (excluded from tracked total)`)
+    } else {
+      lines.push(
+        `• ${i.name}: ${formatBudgetAmount(i, currency)} (split ${formatSplitCount(i.splitCount)} = ${formatBudgetShare(i, currency)})`,
+      )
+    }
   }
   lines.push('')
-  lines.push(`Total: ${hasKnownItems ? formatMoney(total, currency) : 'TBD'}`)
-  lines.push(`Your share: ${hasKnownItems ? formatMoney(Math.round(perPerson), currency) : 'TBD'}`)
+  lines.push(`Tracked total${hasEstimateItems ? ' incl. estimates' : ''}: ${hasKnownItems ? formatMoney(total, currency) : 'TBD'}`)
+  if (hasEstimateItems) lines.push('Estimate line items are included in the tracked total.')
+  if (hasTbdItems) lines.push('Optional/TBD items are excluded from the tracked total.')
   return lines.join('\n')
 }
 

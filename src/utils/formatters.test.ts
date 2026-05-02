@@ -65,9 +65,9 @@ describe('copy formatters', () => {
     const text = formatBudget(items, '$')
 
     expect(text).toContain('Tickets: TBD')
-    expect(text).toContain('split 3 ways')
-    expect(text).toContain('Total: $300')
-    expect(text).toContain('Your share: $100')
+    expect(text).toContain('split 3 ways = $100/share')
+    expect(text).toContain('Tracked total: $300')
+    expect(text).toContain('Optional/TBD items are excluded from the tracked total.')
   })
 
   it('renders an all-TBD budget with a TBD summary', () => {
@@ -78,9 +78,32 @@ describe('copy formatters', () => {
     const text = formatBudget(items, '$')
 
     expect(text).toContain('Tickets: TBD')
-    expect(text).toContain('split 3 ways')
-    expect(text).toContain('Total: TBD')
-    expect(text).toContain('Your share: TBD')
+    expect(text).toContain('excluded from tracked total')
+    expect(text).toContain('Tracked total: TBD')
+  })
+
+  it('formats budget cents and neutral share labels', () => {
+    const items: BudgetItem[] = [
+      { id: 'car', name: 'Rental car', total: 376.93, splitCount: 2 },
+    ]
+
+    const text = formatBudget(items, '$')
+
+    expect(text).toContain('Rental car: $376.93')
+    expect(text).toContain('split 2 ways = $188.47/share')
+    expect(text).not.toContain('/person')
+  })
+
+  it('labels tracked totals that include estimate items', () => {
+    const items: BudgetItem[] = [
+      { id: 'known', name: 'Known stay', total: 300, splitCount: 3 },
+      { id: 'estimate', name: 'Groceries', total: 90, splitCount: 3, status: 'estimate' },
+    ]
+
+    const text = formatBudget(items, '$')
+
+    expect(text).toContain('Tracked total incl. estimates: $390')
+    expect(text).toContain('Estimate line items are included in the tracked total.')
   })
 
   it('pluralizes one-way budget splits correctly', () => {
