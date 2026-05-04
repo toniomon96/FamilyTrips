@@ -9,6 +9,7 @@ const People = lazy(() => import('./pages/People'))
 const Checklist = lazy(() => import('./pages/Checklist'))
 const Budget = lazy(() => import('./pages/Budget'))
 const Packing = lazy(() => import('./pages/Packing'))
+const ManageTrip = lazy(() => import('./pages/ManageTrip'))
 const TripsIndex = lazy(() => import('./pages/TripsIndex'))
 const MothersDay2026 = lazy(() => import('./pages/MothersDay2026'))
 
@@ -35,6 +36,7 @@ export default function App() {
             <Route path="checklist" element={<Checklist />} />
             <Route path="packing" element={<Packing />} />
             <Route path="budget" element={<Budget />} />
+            <Route path="manage" element={<ManageTrip />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

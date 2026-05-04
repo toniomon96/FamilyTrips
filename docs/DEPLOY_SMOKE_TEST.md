@@ -7,6 +7,7 @@ Run this after a production or preview deploy.
 - Open `/` and confirm only listed trips appear.
 - Open one listed trip, for example `/okc`.
 - Open `/logan-bachelor` directly and confirm it loads even though it is unlisted.
+- Open `/okc/manage` and `/logan-bachelor/manage` directly and confirm the hidden owner editor loads.
 - Open an invalid slug and confirm it redirects to `/`.
 
 ## Trip Pages
@@ -27,6 +28,8 @@ With Supabase configured:
 - Toggle a checklist item and confirm progress changes.
 - Add a checklist item and confirm it appears after refresh.
 - Toggle a packing item and confirm it remains checked after refresh.
+- In `/okc/manage`, enter the owner PIN, make a small itinerary or budget edit, save live, refresh `/okc`, and confirm the public page uses the update.
+- Load owner history from `/okc/manage`, restore the previous version, and confirm `/okc` returns to the prior content.
 
 Without Supabase configured:
 

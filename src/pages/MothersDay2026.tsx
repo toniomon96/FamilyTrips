@@ -1,6 +1,8 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import CopyButton from '../components/CopyButton'
 import { mothersDay2026 } from '../data/trips/mothers-day-2026'
+import { useTripWithOverride } from '../hooks/useTripOverrides'
 import { formatDay, formatEventFoodList, formatItinerary, mapsLink } from '../utils/formatters'
 import type { ChecklistItem, EventFoodItem, PackingItem } from '../types/trip'
 
@@ -24,21 +26,6 @@ const giftRows: TrackerRow[] = [
   { item: "Morgan's flowers", status: 'todo', notes: 'Order online for Saturday May 9 delivery or Sunday AM surprise.' },
   { item: 'Card for Mom', status: 'todo', notes: 'Buy, write, and stage with wrapped gift.' },
   { item: 'Card for Morgan', status: 'todo', notes: 'From Toni + Tatum.' },
-]
-
-const choreGroups: { title: string; items: ChecklistItem[] }[] = [
-  {
-    title: 'By Friday night',
-    items: mothersDay2026.eventTasks?.filter((item) => item.category === 'Friday chores') ?? [],
-  },
-  {
-    title: 'Saturday',
-    items: mothersDay2026.eventTasks?.filter((item) => item.category === 'Saturday chores' || item.category === 'Saturday prep') ?? [],
-  },
-  {
-    title: 'Sunday AM',
-    items: mothersDay2026.eventTasks?.filter((item) => item.category === 'Sunday AM setup') ?? [],
-  },
 ]
 
 const openQuestions: Question[] = [
@@ -125,11 +112,30 @@ function SupplyGroup({ title, items }: { title: string; items: PackingItem[] }) 
 }
 
 export default function MothersDay2026() {
-  const trip = mothersDay2026
+  const { trip = mothersDay2026 } = useTripWithOverride(mothersDay2026)
   const saturday = trip.itinerary[0]
   const sunday = trip.itinerary[1]
   const foodGroups = byCategory(trip.food ?? [])
   const supplyGroups = byCategory(trip.supplies ?? [])
+  const choreGroups: { title: string; items: ChecklistItem[] }[] = useMemo(
+    () => [
+      {
+        title: 'By Friday night',
+        items: trip.eventTasks?.filter((item) => item.category === 'Friday chores') ?? [],
+      },
+      {
+        title: 'Saturday',
+        items: trip.eventTasks?.filter(
+          (item) => item.category === 'Saturday chores' || item.category === 'Saturday prep',
+        ) ?? [],
+      },
+      {
+        title: 'Sunday AM',
+        items: trip.eventTasks?.filter((item) => item.category === 'Sunday AM setup') ?? [],
+      },
+    ],
+    [trip.eventTasks],
+  )
   const giftCopy = giftRows.map((row) => `${statusLabel(row.status)} - ${row.item}: ${row.notes}`).join('\n')
   const choresCopy = choreGroups
     .map((group) => `${group.title}\n${group.items.map((item) => `☐ ${item.title}`).join('\n')}`)

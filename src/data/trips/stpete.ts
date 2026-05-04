@@ -1,6 +1,7 @@
 import type { Trip } from '../../types/trip'
-import heroImage from '../../assets/hero.png'
 import { dogChecklistItems } from '../checklistPresets'
+
+const heroImage = new URL('../../assets/hero.png', import.meta.url).href
 
 export const stpete: Trip = {
   slug: 'stpete',

@@ -1,11 +1,13 @@
 import { useMemo } from 'react'
-import { listTripsSorted } from '../data/trips'
+import { listTrips } from '../data/trips'
 import TripCard from '../components/TripCard'
 import EmptyState from '../components/EmptyState'
 import { useAllTripsProgress } from '../hooks/useAllTripsProgress'
+import { useTripsWithOverrides } from '../hooks/useTripOverrides'
 
 export default function TripsIndex() {
-  const trips = useMemo(() => listTripsSorted(), [])
+  const seedTrips = useMemo(() => listTrips(), [])
+  const { trips } = useTripsWithOverrides(seedTrips)
   const progress = useAllTripsProgress(trips)
 
   return (

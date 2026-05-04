@@ -2,12 +2,14 @@ import { Link, Navigate, Outlet, useParams } from 'react-router-dom'
 import BottomNav from './BottomNav'
 import { trips } from '../data/trips'
 import { TripContext } from '../context/tripContextCore'
+import { useTripWithOverride } from '../hooks/useTripOverrides'
 
 export default function Layout() {
   const { tripSlug } = useParams<{ tripSlug: string }>()
-  const trip = tripSlug ? trips[tripSlug] : undefined
+  const seedTrip = tripSlug ? trips[tripSlug] : undefined
+  const { trip } = useTripWithOverride(seedTrip)
 
-  if (!trip) return <Navigate to="/" replace />
+  if (!seedTrip || !trip) return <Navigate to="/" replace />
 
   const basePath = `/${trip.slug}`
 

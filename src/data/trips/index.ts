@@ -26,15 +26,19 @@ export function listListedTrips(): Trip[] {
   return listTrips().filter((trip) => trip.visibility !== 'unlisted')
 }
 
-export function listTripsSorted(): Trip[] {
+export function sortTripsForIndex(sourceTrips: Trip[]): Trip[] {
   const today = todayLocalISO()
   const upcomingOrActive: Trip[] = []
   const past: Trip[] = []
-  for (const t of listListedTrips()) {
+  for (const t of sourceTrips.filter((trip) => trip.visibility !== 'unlisted')) {
     if (t.endDate >= today) upcomingOrActive.push(t)
     else past.push(t)
   }
   upcomingOrActive.sort((a, b) => a.startDate.localeCompare(b.startDate))
   past.sort((a, b) => b.startDate.localeCompare(a.startDate))
   return [...upcomingOrActive, ...past]
+}
+
+export function listTripsSorted(): Trip[] {
+  return sortTripsForIndex(listTrips())
 }

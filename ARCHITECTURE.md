@@ -17,6 +17,8 @@ Checklist done state, packing packed state, and user-added checklist items can s
 
 Packing reuses `checklist_state` with namespaced item IDs such as `packing:pk-docs-id`. Event supplies use `supplies:<supplyItemId>`. User-added checklist items still live in `checklist_items`.
 
+Owner-published trip edits use a static-seed-plus-override model. The static `Trip` object remains the fallback and immutable slug source. Public pages read `trip_overrides` with the anon key and merge the JSONB override over the seed. Writes go through `/api/trip-overrides`, which checks `ADMIN_PIN` server-side and writes with `SUPABASE_SERVICE_ROLE_KEY`, then appends `trip_override_history` for restore.
+
 The Supabase integration is intentionally no-login and casual. It should remain scoped by trip slug in client queries, but it is not an access-control boundary.
 
 ## Privacy Boundary

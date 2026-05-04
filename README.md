@@ -25,9 +25,19 @@ Vite + React 19 + TypeScript + Tailwind v4 + React Router 7. All content lives i
 
 ## Edit an existing trip
 
+For early setup and big structural changes:
+
 1. Open `src/data/trips/<slug>.ts` (e.g. `stpete.ts`, `okc.ts`).
 2. Edit the `Trip` object — dates, stay, bookings, itinerary, people, checklist, packing, budget, contacts.
 3. Commit and push. Vercel rebuilds and deploys.
+
+For late trip updates after the owner-editing backend is configured:
+
+1. Open `/<slug>/manage` directly, for example `/okc/manage` or `/logan-bachelor/manage`.
+2. Enter the owner PIN.
+3. Edit the fields, save live, and refresh the public trip page to confirm the update.
+
+The manage route is intentionally hidden from the family-facing navigation. It saves Supabase overrides on top of the code-defined trip seed, so the source file remains the fallback.
 
 Types live in `src/types/trip.ts` — your editor will guide you through the shape.
 
@@ -76,8 +86,12 @@ The checklist uses two tables:
 
 - `checklist_state` — one row per trip + checklist item, storing done state and the selected actor.
 - `checklist_items` — user-added checklist items for a trip, including title, category, notes, and creator actor.
+- `trip_overrides` — current owner-published trip edits, readable by the public app.
+- `trip_override_history` — owner-only edit history used for restore.
 
 Packing reuses `checklist_state` with namespaced item IDs like `packing:pk-docs-id`, so no third table is needed.
+
+Owner saves go through `/api/trip-overrides`, which requires server-only `ADMIN_PIN` and `SUPABASE_SERVICE_ROLE_KEY` env vars. Use `vercel dev` when testing that API locally; plain `npm run dev` only starts the Vite client server.
 
 The Supabase posture is intentionally casual: anon clients can read/write checklist rows for shared family links. Keep the app deployed only where that tradeoff is acceptable. Code should always query by the current registered trip slugs or direct trip slug, but this is not authentication.
 
