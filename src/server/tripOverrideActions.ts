@@ -1,10 +1,10 @@
-import { getTrip } from '../data/trips'
-import type { TripOverrideData, TripOverrideHistoryRow, TripOverrideRow } from '../utils/tripOverrides'
+import { getTrip } from '../data/trips/index.js'
+import type { TripOverrideData, TripOverrideHistoryRow, TripOverrideRow } from '../utils/tripOverrides.js'
 import {
   applyTripOverride,
   normalizeTripOverrideData,
   validateEditableTrip,
-} from '../utils/tripOverrides'
+} from '../utils/tripOverrides.js'
 
 type SaveBody = {
   action: 'save'

@@ -1,10 +1,10 @@
 import type { Trip } from '../../types/trip'
-import { stpete } from './stpete'
-import { okc } from './okc'
-import { loganBachelor } from './logan-bachelor'
-import { familyCookout } from './family-cookout'
-import { mothersDay2026 } from './mothers-day-2026'
-import { todayLocalISO } from '../../utils/formatters'
+import { stpete } from './stpete.js'
+import { okc } from './okc.js'
+import { loganBachelor } from './logan-bachelor.js'
+import { familyCookout } from './family-cookout.js'
+import { mothersDay2026 } from './mothers-day-2026.js'
+import { todayLocalISO } from '../../utils/formatters.js'
 
 export const trips: Record<string, Trip> = {
   [stpete.slug]: stpete,

@@ -1,5 +1,5 @@
 import type { Trip } from '../types/trip'
-import { validateTripData, type TripDataValidationError } from './validateTripData'
+import { validateTripData, type TripDataValidationError } from './validateTripData.js'
 
 export type TripEditableFields = Omit<Trip, 'slug'>
 

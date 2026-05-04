@@ -1,5 +1,5 @@
 import type { Trip } from '../../types/trip'
-import { dogChecklistItems } from '../checklistPresets'
+import { dogChecklistItems } from '../checklistPresets.js'
 
 export const okc: Trip = {
   slug: 'okc',

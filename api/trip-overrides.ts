@@ -4,8 +4,8 @@ import { createClient } from '@supabase/supabase-js'
 import {
   runTripOverrideAction,
   type TripOverrideStore,
-} from '../src/server/tripOverrideActions'
-import type { TripOverrideHistoryRow, TripOverrideRow } from '../src/utils/tripOverrides'
+} from '../src/server/tripOverrideActions.js'
+import type { TripOverrideHistoryRow, TripOverrideRow } from '../src/utils/tripOverrides.js'
 
 type JsonRequest = IncomingMessage & {
   body?: unknown
