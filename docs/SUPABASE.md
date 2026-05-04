@@ -44,6 +44,9 @@ create table if not exists public.checklist_items (
   created_by_actor_id text null
 );
 
+alter table public.checklist_items
+  add column if not exists updated_at timestamptz not null default now();
+
 create index if not exists checklist_state_trip_slug_idx
   on public.checklist_state (trip_slug);
 
