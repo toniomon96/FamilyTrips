@@ -25,6 +25,15 @@ function createStore(seedRows: TripOverrideRow[] = []): {
       async insertHistory(row) {
         history.unshift({ ...row, id: `hist-${row.version}` })
       },
+      async deleteUatTrip(tripSlug) {
+        const deleted = rows.delete(tripSlug)
+        for (let index = history.length - 1; index >= 0; index -= 1) {
+          if (history[index].trip_slug === tripSlug) {
+            history.splice(index, 1)
+          }
+        }
+        return deleted
+      },
     },
   }
 }
@@ -121,6 +130,8 @@ describe('trip create API action handler', () => {
     expect(state.rows.get('logan-morgan-honeymoon')?.source).toBe('dynamic')
     expect(state.rows.get('logan-morgan-honeymoon')?.visibility).toBe('unlisted')
     if (!result.body.ok) return
+    expect('trip' in result.body).toBe(true)
+    if (!('trip' in result.body)) return
     expect(result.body.generationSummary?.matchedPackId).toBe('le-blanc-los-cabos')
     expect(result.body.trip.itinerary).toHaveLength(5)
     expect(JSON.stringify(result.body.trip).toLowerCase()).toContain('lovers beach')
@@ -154,6 +165,8 @@ describe('trip create API action handler', () => {
 
     expect(result.status).toBe(200)
     if (!result.body.ok) return
+    expect('trip' in result.body).toBe(true)
+    if (!('trip' in result.body)) return
     expect(result.body.generationSummary?.source).toBe('ai-fallback')
     expect(result.body.trip.name).toBe('AI Fallback Honeymoon')
   })
@@ -289,5 +302,106 @@ describe('trip create API action handler', () => {
 
     expect(result.status).toBe(400)
     expect(state.rows.size).toBe(0)
+  })
+
+  it('deletes only Codex UAT dynamic test trips', async () => {
+    const state = createStore()
+
+    const created = await runTripCreateAction(
+      {
+        action: 'generate',
+        pin: 'editor',
+        createdBy: 'Codex UAT',
+        brief: {
+          slug: 'codex-uat-le-blanc-123',
+          name: 'Codex UAT Le Blanc',
+          destination: 'Le Blanc Los Cabos',
+          startDate: '2026-07-19',
+          endDate: '2026-07-23',
+        },
+      },
+      state.store,
+      { editorPin: 'editor' },
+    )
+    const deleted = await runTripCreateAction(
+      { action: 'deleteUat', pin: 'editor', tripSlug: 'codex-uat-le-blanc-123' },
+      state.store,
+      { editorPin: 'editor' },
+    )
+
+    expect(created.status).toBe(200)
+    expect(deleted.status).toBe(200)
+    expect(state.rows.has('codex-uat-le-blanc-123')).toBe(false)
+    expect(state.history).toHaveLength(0)
+  })
+
+  it('does not let the UAT cleanup action delete real dynamic trips', async () => {
+    const realTrip = createTripShell({
+      name: 'Real Honeymoon',
+      location: 'Le Blanc Los Cabos',
+      startDate: '2026-07-19',
+      endDate: '2026-07-23',
+      template: 'honeymoon',
+    })
+    const createdAt = new Date().toISOString()
+    const state = createStore([
+      {
+        trip_slug: realTrip.slug,
+        data: realTrip,
+        version: 1,
+        updated_at: createdAt,
+        updated_by: 'Logan',
+        source: 'dynamic',
+        visibility: 'unlisted',
+        created_at: createdAt,
+        created_by: 'Logan',
+      },
+    ])
+
+    const result = await runTripCreateAction(
+      { action: 'deleteUat', pin: 'editor', tripSlug: realTrip.slug },
+      state.store,
+      { editorPin: 'editor' },
+    )
+
+    expect(result.status).toBe(403)
+    expect(state.rows.has(realTrip.slug)).toBe(true)
+  })
+
+  it('returns conflict if a UAT row disappears before cleanup completes', async () => {
+    const createdAt = new Date().toISOString()
+    const state = createStore([
+      {
+        trip_slug: 'codex-uat-vanishing',
+        data: createTripShell({
+          slug: 'codex-uat-vanishing',
+          name: 'Vanishing UAT',
+          location: 'Le Blanc Los Cabos',
+          startDate: '2026-07-19',
+          endDate: '2026-07-23',
+          template: 'honeymoon',
+        }),
+        version: 1,
+        updated_at: createdAt,
+        updated_by: 'Codex UAT',
+        source: 'dynamic',
+        visibility: 'unlisted',
+        created_at: createdAt,
+        created_by: 'Codex UAT',
+      },
+    ])
+
+    const result = await runTripCreateAction(
+      { action: 'deleteUat', pin: 'editor', tripSlug: 'codex-uat-vanishing' },
+      {
+        ...state.store,
+        async deleteUatTrip() {
+          return false
+        },
+      },
+      { editorPin: 'editor' },
+    )
+
+    expect(result.status).toBe(409)
   })
 })

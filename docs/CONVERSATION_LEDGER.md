@@ -35,3 +35,10 @@ Durable notes for product decisions, open questions, and why the app changed. Ke
 - Data behavior: generated trips are written as dynamic unlisted `trip_overrides` rows and open directly into `/<slug>/manage?created=1&draft=generated`.
 - Le Blanc pilot: official Le Blanc Los Cabos dining/experience details are in a code destination pack; activity and restaurant suggestions are marked as needing confirmation where appropriate.
 - Safety posture: AI never writes directly without validation; missing or malformed AI output falls back to deterministic generation.
+
+## 2026-05-13 - UAT Smoke Automation
+
+- Ask: Toni wants the UAT testing loop to be reliable and easy because he and Logan have limited time to manually test.
+- Decision: add `npm run uat:smart-trip` as a one-command Le Blanc smart-trip smoke test.
+- Test posture: the script creates a temporary Vercel deployment with a one-time UAT PIN, uses the real `/api/trips` generation path, checks wrong-PIN rejection, verifies generated trip content and routes, deletes the generated `codex-uat-*` row, checks production wrong-PIN behavior, and removes the temporary deployment.
+- Cleanup boundary: the `deleteUat` API action only deletes dynamic rows whose slug starts with `codex-uat-` and whose creator is `Codex UAT`; it is not a general trip delete feature.

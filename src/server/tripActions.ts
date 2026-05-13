@@ -24,16 +24,24 @@ type GenerateBody = {
   createdBy?: unknown
 }
 
-type TripActionBody = CreateBody | GenerateBody
+type DeleteUatBody = {
+  action: 'deleteUat'
+  pin: string
+  tripSlug: string
+}
+
+type TripActionBody = CreateBody | GenerateBody | DeleteUatBody
 
 export type TripCreateStore = {
   getCurrent: (tripSlug: string) => Promise<TripOverrideRow | null>
   insertCurrent: (row: TripOverrideRow) => Promise<boolean>
   insertHistory: (row: Omit<TripOverrideHistoryRow, 'id'>) => Promise<void>
+  deleteUatTrip: (tripSlug: string) => Promise<boolean>
 }
 
 export type TripCreateActionResult =
   | { status: number; body: { ok: true; trip: Trip; row: TripOverrideRow; generationSummary?: TripGenerationSummary } }
+  | { status: number; body: { ok: true; deleted: true; tripSlug: string } }
   | {
       status: number
       body: {
@@ -78,6 +86,15 @@ function parseBody(body: unknown): TripActionBody | null {
       createdBy: body.createdBy,
     }
   }
+  if (body.action === 'deleteUat') {
+    const tripSlug = asString(body.tripSlug)
+    if (!tripSlug) return null
+    return {
+      action: 'deleteUat',
+      pin,
+      tripSlug,
+    }
+  }
   return null
 }
 
@@ -87,6 +104,10 @@ function requestError(status: number, error: string): TripCreateActionResult {
 
 function actorName(value: unknown): string {
   return asString(value) ?? 'creator'
+}
+
+function isCodexUatRow(tripSlug: string, row: TripOverrideRow): boolean {
+  return row.source === 'dynamic' && tripSlug.startsWith('codex-uat-') && row.created_by === 'Codex UAT'
 }
 
 async function writeDynamicTrip(
@@ -157,6 +178,21 @@ export async function runTripCreateAction(
   const editorPinMatches = options.editorPin ? pinMatches(body.pin, options.editorPin) : false
   if (!adminPinMatches && !editorPinMatches) {
     return requestError(401, 'Invalid trip edit PIN.')
+  }
+
+  if (body.action === 'deleteUat') {
+    const row = await store.getCurrent(body.tripSlug)
+    if (!row) {
+      return requestError(404, 'UAT trip not found.')
+    }
+    if (!isCodexUatRow(body.tripSlug, row)) {
+      return requestError(403, 'Only Codex UAT dynamic test trips can be deleted by this action.')
+    }
+    const deleted = await store.deleteUatTrip(body.tripSlug)
+    if (!deleted) {
+      return requestError(409, 'UAT trip could not be deleted safely.')
+    }
+    return { status: 200, body: { ok: true, deleted: true, tripSlug: body.tripSlug } }
   }
 
   if (body.action === 'generate') {

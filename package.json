@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "validate:data": "node scripts/validate-data.mjs",
+    "uat:smart-trip": "powershell -ExecutionPolicy Bypass -File scripts/uat-smart-trip-smoke.ps1",
     "preview": "vite preview"
   },
   "dependencies": {

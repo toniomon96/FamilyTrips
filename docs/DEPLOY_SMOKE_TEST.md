@@ -2,6 +2,16 @@
 
 Run this after a production or preview deploy.
 
+## Automated UAT
+
+Run `npm run uat:smart-trip` when Vercel CLI is authenticated.
+
+The script creates a temporary preview deployment with a one-time UAT edit PIN, verifies wrong-PIN rejection, generates a Le Blanc Los Cabos honeymoon draft, checks the direct trip and manage routes, deletes the generated `codex-uat-*` test row, confirms production still rejects a wrong PIN, and removes the temporary deployment.
+
+To clean up older Codex-created UAT rows during the same run, set a comma-separated list first:
+
+`$env:UAT_CLEANUP_SLUGS = 'codex-uat-le-blanc-20260513174343'; npm run uat:smart-trip`
+
 ## Routes
 
 - Open `/` and confirm only listed trips appear.
@@ -33,7 +43,7 @@ With Supabase configured:
 - Load owner history from `/okc/manage`, restore the previous version, and confirm `/okc` returns to the prior content.
 - In `/trips/new`, create a temporary unlisted smart draft with `TRIP_EDITOR_PIN`, confirm the generated manage-page panel appears, confirm the direct URL opens, and confirm it does not appear on `/`.
 - In that dynamic trip's manage page, save a small edit with `TRIP_EDITOR_PIN`, switch visibility to listed, refresh `/`, and confirm the trip appears.
-- Delete or hide the temporary dynamic trip after the smoke test if it should not remain visible.
+- Delete or hide the temporary dynamic trip after the smoke test if it should not remain visible. For Codex-created rows, `npm run uat:smart-trip` uses the `/api/trips` `deleteUat` cleanup action and only deletes dynamic rows with a `codex-uat-*` slug created by `Codex UAT`.
 
 Without Supabase configured:
 

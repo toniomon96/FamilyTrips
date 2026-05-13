@@ -70,6 +70,22 @@ function createStore(url: string, serviceRoleKey: string): TripCreateStore {
       const { error } = await admin.from('trip_override_history').insert(historyRow)
       if (error) throw error
     },
+    async deleteUatTrip(tripSlug) {
+      const { data, error } = await admin
+        .from('trip_overrides')
+        .delete()
+        .eq('trip_slug', tripSlug)
+        .eq('source', 'dynamic')
+        .eq('created_by', 'Codex UAT')
+        .select('trip_slug')
+        .maybeSingle()
+      if (error) throw error
+      if (!data) return false
+
+      const { error: historyError } = await admin.from('trip_override_history').delete().eq('trip_slug', tripSlug)
+      if (historyError) throw historyError
+      return true
+    },
   }
 }
 
