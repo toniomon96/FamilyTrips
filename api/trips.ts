@@ -1,10 +1,7 @@
 import { timingSafeEqual } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createClient } from '@supabase/supabase-js'
-import {
-  runTripOverrideAction,
-  type TripOverrideStore,
-} from '../src/server/tripOverrideActions.js'
+import { runTripCreateAction, type TripCreateStore } from '../src/server/tripActions.js'
 import { TRIP_OVERRIDE_SELECT, type TripOverrideHistoryRow, type TripOverrideRow } from '../src/utils/tripOverrides.js'
 
 type JsonRequest = IncomingMessage & {
@@ -38,7 +35,7 @@ async function readBody(req: JsonRequest): Promise<unknown> {
   return raw.trim() ? JSON.parse(raw) : {}
 }
 
-function createStore(url: string, serviceRoleKey: string): TripOverrideStore {
+function createStore(url: string, serviceRoleKey: string): TripCreateStore {
   const admin = createClient(url, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
@@ -60,7 +57,7 @@ function createStore(url: string, serviceRoleKey: string): TripOverrideStore {
       if (error) throw error
     },
     async insertHistory(row) {
-      const historyRow = {
+      const historyRow: Omit<TripOverrideHistoryRow, 'id' | 'source' | 'visibility' | 'created_at' | 'created_by'> = {
         trip_slug: row.trip_slug,
         data: row.data,
         version: row.version,
@@ -70,26 +67,6 @@ function createStore(url: string, serviceRoleKey: string): TripOverrideStore {
       }
       const { error } = await admin.from('trip_override_history').insert(historyRow)
       if (error) throw error
-    },
-    async getHistory(tripSlug) {
-      const { data, error } = await admin
-        .from('trip_override_history')
-        .select('id,trip_slug,data,version,updated_at,updated_by,restored_from_version')
-        .eq('trip_slug', tripSlug)
-        .order('version', { ascending: false })
-        .limit(20)
-      if (error) throw error
-      return (data ?? []) as TripOverrideHistoryRow[]
-    },
-    async getHistoryVersion(tripSlug, version) {
-      const { data, error } = await admin
-        .from('trip_override_history')
-        .select('id,trip_slug,data,version,updated_at,updated_by,restored_from_version')
-        .eq('trip_slug', tripSlug)
-        .eq('version', version)
-        .maybeSingle()
-      if (error) throw error
-      return (data as TripOverrideHistoryRow | null) ?? null
     },
   }
 }
@@ -104,19 +81,19 @@ export default async function handler(req: JsonRequest, res: ServerResponse) {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!supabaseUrl || !serviceRoleKey) {
-    json(res, 500, { ok: false, error: 'Supabase owner editing is not configured.' })
+    json(res, 500, { ok: false, error: 'Supabase trip creation is not configured.' })
     return
   }
 
   try {
     const body = await readBody(req)
-    const result = await runTripOverrideAction(body, createStore(supabaseUrl, serviceRoleKey), {
+    const result = await runTripCreateAction(body, createStore(supabaseUrl, serviceRoleKey), {
       adminPin: process.env.ADMIN_PIN,
       editorPin: process.env.TRIP_EDITOR_PIN,
       pinMatches,
     })
     json(res, result.status, result.body)
   } catch {
-    json(res, 500, { ok: false, error: 'Owner edit request failed.' })
+    json(res, 500, { ok: false, error: 'Trip create request failed.' })
   }
 }

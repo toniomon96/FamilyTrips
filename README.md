@@ -15,6 +15,7 @@ Vite + React 19 + TypeScript + Tailwind v4 + React Router 7. All content lives i
 ## How it's organized
 
 - `/` — **Trips index** (cards for every trip, upcoming first)
+- `/trips/new` — Create a new unlisted trip shell with the shared trip edit PIN
 - `/:tripSlug` — Home for that trip (hero/countdown/today/quick-links/share)
 - `/:tripSlug/trip` — Itinerary + things to do
 - `/:tripSlug/stay` — Stay details + bookings (flights, car, activities)
@@ -42,6 +43,17 @@ The manage route is intentionally hidden from the family-facing navigation. It s
 Types live in `src/types/trip.ts` — your editor will guide you through the shape.
 
 ## Add a new trip
+
+For trusted family/friends, use the app:
+
+1. Open `/trips/new`.
+2. Enter the shared trip edit PIN.
+3. Add the trip basics, confirm the share URL, and create the trip.
+4. Use the manage page that opens next to fill in the itinerary, stay, people, checklist, packing, and budget.
+
+Self-serve trips are Supabase-backed and default to unlisted direct links. They can be changed to listed from the manage page later.
+
+For code-backed seed trips:
 
 1. Copy an existing trip file to `src/data/trips/<new-slug>.ts`.
 2. Change the `slug`, name, dates, and content.
@@ -77,8 +89,9 @@ The checklist and packing toggles are backed by Supabase so changes can sync acr
 
 - `VITE_SUPABASE_URL` — `https://<project-ref>.supabase.co`
 - `VITE_SUPABASE_ANON_KEY` — the project's **anon / publishable** key
+- `TRIP_EDITOR_PIN` — shared server-only PIN for creating and editing dynamic self-serve trips
 
-Set both in Vercel → Project Settings → Environment Variables (Production + Preview + Development). Trigger a redeploy after saving — Vite bakes env vars at build time.
+Set them in Vercel → Project Settings → Environment Variables (Production + Preview + Development). Trigger a redeploy after saving — Vite bakes `VITE_` env vars at build time.
 
 For local dev, copy `.env.example` to `.env.local` and fill in the same values. If the vars are missing, checkbox toggles and user-added checklist items still work in the current browser session but are not permanent. Session-only changes are not uploaded later if Supabase env vars are added.
 
@@ -91,7 +104,7 @@ The checklist uses two tables:
 
 Packing reuses `checklist_state` with namespaced item IDs like `packing:pk-docs-id`, so no third table is needed.
 
-Owner saves go through `/api/trip-overrides`, which requires server-only `ADMIN_PIN` and `SUPABASE_SERVICE_ROLE_KEY` env vars. Use `vercel dev` when testing that API locally; plain `npm run dev` only starts the Vite client server.
+Owner saves go through `/api/trip-overrides`, and self-serve trip creation goes through `/api/trips`. These APIs require server-only `ADMIN_PIN`, `TRIP_EDITOR_PIN`, and `SUPABASE_SERVICE_ROLE_KEY` env vars. Use `vercel dev` when testing those APIs locally; plain `npm run dev` only starts the Vite client server.
 
 The Supabase posture is intentionally casual: anon clients can read/write checklist rows for shared family links. Keep the app deployed only where that tradeoff is acceptable. Code should always query by the current registered trip slugs or direct trip slug, but this is not authentication.
 
@@ -99,7 +112,7 @@ See `docs/SUPABASE.md` for setup SQL, `docs/DEPLOY_SMOKE_TEST.md` for post-deplo
 
 ## Privacy model
 
-This is a static client-side app. Anything in `src/data/trips` is shipped in the built JavaScript bundle, including unlisted trips, names, phone numbers, addresses, reservation details, passwords, and budgets. `visibility: 'unlisted'` only hides a trip from the rendered `/` index; anyone who can load the app bundle or has the direct URL can see the data.
+This is a static client-side app with public Supabase reads for shared planning. Anything in `src/data/trips` is shipped in the built JavaScript bundle, and Supabase-backed dynamic trips are readable by slug from the public client. `visibility: 'unlisted'` only hides a trip from the rendered `/` index; anyone who has the direct URL can see the data.
 
 That is fine for the current casual family-use case, especially while the site is not advertised. If a future trip needs real privacy, do not put sensitive details in trip objects; move that trip behind authenticated storage or keep those details in the group chat.
 

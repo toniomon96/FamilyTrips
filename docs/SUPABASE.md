@@ -1,7 +1,7 @@
 # Supabase Setup
 
 Family Trips works without Supabase, but checklist and packing changes are only shared across devices when Supabase is configured.
-Owner editing also uses Supabase. Public pages read the latest published trip override with the anon key, while writes go through the Vercel API using the service role key and `ADMIN_PIN`.
+Owner editing and self-serve trip creation also use Supabase. Public pages read the latest published trip rows with the anon key, while writes go through Vercel APIs using the service role key plus `ADMIN_PIN` or `TRIP_EDITOR_PIN`.
 
 ## Environment Variables
 
@@ -11,10 +11,11 @@ Set these in Vercel and in local `.env.local` when testing sync:
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
 VITE_SUPABASE_ANON_KEY=<anon-or-publishable-key>
 ADMIN_PIN=<private-owner-pin>
+TRIP_EDITOR_PIN=<shared-trip-editor-pin>
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 ```
 
-`ADMIN_PIN` and `SUPABASE_SERVICE_ROLE_KEY` are server-only. Do not prefix either one with `VITE_`.
+`ADMIN_PIN`, `TRIP_EDITOR_PIN`, and `SUPABASE_SERVICE_ROLE_KEY` are server-only. Do not prefix them with `VITE_`.
 
 ## Schema
 
@@ -132,6 +133,18 @@ create table if not exists public.trip_overrides (
   updated_by text null
 );
 
+alter table public.trip_overrides
+  add column if not exists source text not null default 'seed' check (source in ('seed', 'dynamic'));
+
+alter table public.trip_overrides
+  add column if not exists visibility text not null default 'listed' check (visibility in ('listed', 'unlisted'));
+
+alter table public.trip_overrides
+  add column if not exists created_at timestamptz not null default now();
+
+alter table public.trip_overrides
+  add column if not exists created_by text null;
+
 create table if not exists public.trip_override_history (
   id uuid primary key default gen_random_uuid(),
   trip_slug text not null,
@@ -147,6 +160,9 @@ create index if not exists trip_override_history_trip_version_idx
 
 create index if not exists trip_override_history_trip_updated_idx
   on public.trip_override_history (trip_slug, updated_at desc);
+
+create index if not exists trip_overrides_source_visibility_idx
+  on public.trip_overrides (source, visibility, updated_at desc);
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -184,7 +200,9 @@ using (true);
 - User-added checklist items live in `checklist_items`; their done state also lives in `checklist_state` by item ID.
 - When Supabase is not configured, checklist and packing changes use `sessionStorage` for the current browser session. Those local changes are not uploaded later if Supabase env vars are added.
 - Static trip files remain the seed source. `trip_overrides.data` stores the current editable fields for a trip without changing the immutable slug.
+- Self-serve trips are stored in `trip_overrides` with `source = 'dynamic'`. Their `trip_slug` is the route slug, `data` stores the full editable trip body, and `visibility` controls whether the trip appears on `/`.
 - `trip_override_history` is append-only history used by `/:tripSlug/manage` for restore. It is read through the owner API, not the public anon client.
-- The owner API needs `ADMIN_PIN`, `SUPABASE_SERVICE_ROLE_KEY`, and either `SUPABASE_URL` or `VITE_SUPABASE_URL` in the Vercel environment.
+- `/api/trips` creates dynamic trips with `TRIP_EDITOR_PIN` or `ADMIN_PIN`. Dynamic trips can be edited with either PIN; code-backed static trips still require `ADMIN_PIN`.
+- The server APIs need `ADMIN_PIN`, `TRIP_EDITOR_PIN`, `SUPABASE_SERVICE_ROLE_KEY`, and either `SUPABASE_URL` or `VITE_SUPABASE_URL` in the Vercel environment.
 
 This is not authentication. If a trip needs real privacy, do not put sensitive trip details in the static trip data or open Supabase tables.

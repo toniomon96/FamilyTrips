@@ -4,8 +4,8 @@ Family Trips is a static-first Vite + React app. The production artifact is a cl
 
 ## Core Shape
 
-- Trip content is typed data in `src/data/trips`.
-- `src/data/trips/index.ts` registers trips, returns direct trip lookups, filters unlisted trips for `/`, and sorts listed trips by active/upcoming/past dates.
+- Code-backed trip content is typed data in `src/data/trips`.
+- `src/data/trips/index.ts` registers static trips, returns direct static lookups, filters unlisted trips for `/`, and sorts listed trips by active/upcoming/past dates.
 - React Router owns the route tree: `/` lists trips, and `/:tripSlug` plus child routes render one trip.
 - Shared trip context is provided by `src/components/Layout.tsx` and consumed by trip pages.
 - Packing and event supplies are code-defined content. They are exposed as `/:tripSlug/packing` and linked from the home quick links, not the bottom nav.
@@ -17,13 +17,15 @@ Checklist done state, packing packed state, and user-added checklist items can s
 
 Packing reuses `checklist_state` with namespaced item IDs such as `packing:pk-docs-id`. Event supplies use `supplies:<supplyItemId>`. User-added checklist items still live in `checklist_items`.
 
-Owner-published trip edits use a static-seed-plus-override model. The static `Trip` object remains the fallback and immutable slug source. Public pages read `trip_overrides` with the anon key and merge the JSONB override over the seed. Writes go through `/api/trip-overrides`, which checks `ADMIN_PIN` server-side and writes with `SUPABASE_SERVICE_ROLE_KEY`, then appends `trip_override_history` for restore.
+Owner-published trip edits use a static-seed-plus-override model. The static `Trip` object remains the fallback and immutable slug source. Public pages read `trip_overrides` with the anon key and merge the JSONB override over the seed. Static-trip writes go through `/api/trip-overrides`, which checks `ADMIN_PIN` server-side and writes with `SUPABASE_SERVICE_ROLE_KEY`, then appends `trip_override_history` for restore.
+
+Self-serve trips are dynamic rows in `trip_overrides` with `source = 'dynamic'`. `/trips/new` creates a valid trip shell through `/api/trips`, using `TRIP_EDITOR_PIN` or `ADMIN_PIN`. Dynamic routes resolve from Supabase when no static seed exists, and dynamic trips can be edited with either PIN. Dynamic trips default to `visibility = 'unlisted'` so creators share a direct URL first and can publish to `/` later from the manage page.
 
 The Supabase integration is intentionally no-login and casual. It should remain scoped by trip slug in client queries, but it is not an access-control boundary.
 
 ## Privacy Boundary
 
-`visibility: 'unlisted'` is index visibility only. Unlisted trip data remains in the JavaScript bundle and direct URLs still work. Do not store details in trip objects if a trip needs real privacy.
+`visibility: 'unlisted'` is index visibility only. Unlisted static trip data remains in the JavaScript bundle, and unlisted dynamic trips remain readable through public Supabase selects by anyone who knows the slug. Do not store details in trip objects if a trip needs real privacy.
 
 ## Validation
 

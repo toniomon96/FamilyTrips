@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { okc } from '../data/trips/okc'
 import {
   applyTripOverride,
+  dynamicTripFromRow,
   editableFieldsFromTrip,
   makeStableIdFromLabel,
   normalizeTripOverrideData,
@@ -29,6 +30,22 @@ describe('trip override helpers', () => {
     })
 
     expect(data).toEqual({ name: 'Trip name' })
+  })
+
+  it('normalizes dynamic trip rows into full trips', () => {
+    const trip = dynamicTripFromRow({
+      trip_slug: 'dynamic-okc',
+      data: { ...editableFieldsFromTrip(okc), name: 'Dynamic OKC', visibility: 'unlisted' },
+      version: 1,
+      updated_at: '2026-01-01T00:00:00.000Z',
+      updated_by: 'creator',
+      source: 'dynamic',
+      visibility: 'listed',
+    })
+
+    expect(trip?.slug).toBe('dynamic-okc')
+    expect(trip?.name).toBe('Dynamic OKC')
+    expect(trip?.visibility).toBe('listed')
   })
 
   it('creates stable unique ids from labels', () => {

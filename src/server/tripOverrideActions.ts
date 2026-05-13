@@ -2,7 +2,9 @@ import { getTrip } from '../data/trips/index.js'
 import type { TripOverrideData, TripOverrideHistoryRow, TripOverrideRow } from '../utils/tripOverrides.js'
 import {
   applyTripOverride,
+  dynamicTripFromRow,
   normalizeTripOverrideData,
+  tripVisibilityFromData,
   validateEditableTrip,
 } from '../utils/tripOverrides.js'
 
@@ -51,6 +53,7 @@ export type TripOverrideActionResult =
 
 type RunOptions = {
   adminPin?: string
+  editorPin?: string
   pinMatches?: (submitted: string, expected: string) => boolean
 }
 
@@ -115,6 +118,7 @@ function rowForSave(
   version: number,
   data: TripOverrideData,
   updatedBy: string,
+  source: 'seed' | 'dynamic',
 ): TripOverrideRow {
   return {
     trip_slug: tripSlug,
@@ -122,6 +126,8 @@ function rowForSave(
     version,
     updated_at: new Date().toISOString(),
     updated_by: updatedBy,
+    source,
+    visibility: tripVisibilityFromData(data),
   }
 }
 
@@ -135,7 +141,7 @@ export async function runTripOverrideAction(
   store: TripOverrideStore,
   options: RunOptions,
 ): Promise<TripOverrideActionResult> {
-  if (!options.adminPin) {
+  if (!options.adminPin && !options.editorPin) {
     return requestError(500, 'Owner editing is not configured.')
   }
 
@@ -145,14 +151,24 @@ export async function runTripOverrideAction(
   }
 
   const pinMatches = options.pinMatches ?? ((submitted, expected) => submitted === expected)
-  if (!pinMatches(body.pin, options.adminPin)) {
+  const adminPinMatches = options.adminPin ? pinMatches(body.pin, options.adminPin) : false
+  const editorPinMatches = options.editorPin ? pinMatches(body.pin, options.editorPin) : false
+  if (!adminPinMatches && !editorPinMatches) {
     return requestError(401, 'Invalid owner PIN.')
   }
 
   const seed = getTrip(body.tripSlug)
-  if (!seed) {
+  const current = await store.getCurrent(body.tripSlug)
+  if (seed && !adminPinMatches) {
+    return requestError(401, 'Invalid owner PIN.')
+  }
+
+  const dynamicTrip = seed ? null : dynamicTripFromRow(current)
+  const baseTrip = seed ?? dynamicTrip
+  if (!baseTrip) {
     return requestError(404, 'Trip not found.')
   }
+  const rowSource: 'seed' | 'dynamic' = seed ? 'seed' : 'dynamic'
 
   if (body.action === 'history') {
     const history = await store.getHistory(body.tripSlug)
@@ -165,7 +181,7 @@ export async function runTripOverrideAction(
       return requestError(404, 'History version not found.')
     }
 
-    const validationErrors = validateEditableTrip(seed, historyRow.data)
+    const validationErrors = validateEditableTrip(baseTrip, historyRow.data)
     if (validationErrors.length > 0) {
       return {
         status: 400,
@@ -178,7 +194,7 @@ export async function runTripOverrideAction(
     }
 
     const version = await nextVersion(store, body.tripSlug)
-    const row = rowForSave(body.tripSlug, version, historyRow.data, ownerName(body.updatedBy))
+    const row = rowForSave(body.tripSlug, version, historyRow.data, ownerName(body.updatedBy), rowSource)
     await store.upsertCurrent(row)
     await store.insertHistory({ ...row, restored_from_version: historyRow.version })
 
@@ -188,13 +204,13 @@ export async function runTripOverrideAction(
         ok: true,
         row,
         history: await store.getHistory(body.tripSlug),
-        mergedTrip: applyTripOverride(seed, row.data),
+        mergedTrip: applyTripOverride(baseTrip, row.data),
       },
     }
   }
 
   const data = normalizeTripOverrideData(body.data)
-  const validationErrors = validateEditableTrip(seed, data)
+  const validationErrors = validateEditableTrip(baseTrip, data)
   if (validationErrors.length > 0) {
     return {
       status: 400,
@@ -207,7 +223,7 @@ export async function runTripOverrideAction(
   }
 
   const version = await nextVersion(store, body.tripSlug)
-  const row = rowForSave(body.tripSlug, version, data, ownerName(body.updatedBy))
+  const row = rowForSave(body.tripSlug, version, data, ownerName(body.updatedBy), rowSource)
   await store.upsertCurrent(row)
   await store.insertHistory({ ...row, restored_from_version: null })
 
@@ -217,7 +233,7 @@ export async function runTripOverrideAction(
       ok: true,
       row,
       history: await store.getHistory(body.tripSlug),
-      mergedTrip: applyTripOverride(seed, row.data),
+      mergedTrip: applyTripOverride(baseTrip, row.data),
     },
   }
 }

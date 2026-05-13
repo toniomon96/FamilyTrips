@@ -705,16 +705,24 @@ export default function ManageTrip() {
         </Link>
         <div className="rounded-3xl bg-slate-900 text-white p-5 shadow-sm space-y-3">
           <div>
-            <p className="text-slate-300 text-sm uppercase tracking-wide">Owner workspace</p>
+            <p className="text-slate-300 text-sm uppercase tracking-wide">Trip workspace</p>
             <h1 className="text-3xl font-bold leading-tight">Manage {draft.name}</h1>
             <p className="text-slate-300 mt-1">Edits publish live for everyone viewing this trip.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
             <input
+              type="text"
+              autoComplete="username"
+              value="trip-editor"
+              readOnly
+              tabIndex={-1}
+              className="sr-only"
+            />
+            <input
               type="password"
               autoComplete="current-password"
               value={pin}
-              placeholder="Owner PIN"
+              placeholder="Trip edit PIN"
               onChange={(event) => setPin(event.target.value)}
               className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white"
             />
