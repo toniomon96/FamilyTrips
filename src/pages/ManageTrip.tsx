@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import Section from '../components/Section'
 import { getTrip } from '../data/trips'
 import { useTrip } from '../context/tripContextCore'
@@ -581,6 +581,7 @@ async function ownerRequest(payload: Record<string, unknown>): Promise<OwnerApiR
 
 export default function ManageTrip() {
   const effectiveTrip = useTrip()
+  const [searchParams] = useSearchParams()
   const seedTrip = useMemo(() => getTrip(effectiveTrip.slug) ?? effectiveTrip, [effectiveTrip])
   const [draft, setDraft] = useState<Trip>(() => cloneTrip(effectiveTrip))
   const [dirty, setDirty] = useState(false)
@@ -696,6 +697,19 @@ export default function ManageTrip() {
   }
 
   const canSave = pin.trim().length > 0 && dirty && validationErrors.length === 0 && saveState !== 'saving'
+  const showGeneratedDraftPanel = searchParams.get('created') === '1' && searchParams.get('draft') === 'generated'
+
+  async function handleCopyTripLink() {
+    const tripUrl = `${window.location.origin}/${draft.slug}`
+    try {
+      await window.navigator.clipboard.writeText(tripUrl)
+      setSaveState('idle')
+      setMessage('Trip link copied.')
+    } catch {
+      setSaveState('error')
+      setMessage(tripUrl)
+    }
+  }
 
   return (
     <form onSubmit={handleSave} className="space-y-6">
@@ -763,6 +777,40 @@ export default function ManageTrip() {
           )}
         </div>
       </header>
+
+      {showGeneratedDraftPanel && (
+        <section className="rounded-3xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Draft created</p>
+                <h2 className="mt-1 text-2xl font-bold text-slate-950">Your first trip plan is ready to review.</h2>
+              </div>
+              <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 sm:grid-cols-2">
+                <p className="rounded-2xl bg-white px-3 py-2">Review the itinerary flow and move anything that feels too packed.</p>
+                <p className="rounded-2xl bg-white px-3 py-2">Confirm restaurants, dress codes, and must-do activity logistics.</p>
+                <p className="rounded-2xl bg-white px-3 py-2">Use bookings and checklist items as the reservation follow-up list.</p>
+                <p className="rounded-2xl bg-white px-3 py-2">Open copyable messages for a ready-to-send trip summary.</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 lg:justify-end">
+              <Link
+                to={`/${draft.slug}`}
+                className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white"
+              >
+                View trip
+              </Link>
+              <button
+                type="button"
+                onClick={handleCopyTripLink}
+                className="rounded-full border border-blue-300 bg-white px-4 py-2 text-sm font-semibold text-blue-800"
+              >
+                Copy trip link
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
 
       {validationSummary(allErrors)}
 

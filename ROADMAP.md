@@ -6,11 +6,14 @@ Family Trips is a casual shared planning hub for trips and family events. The go
 
 - Run the Supabase SQL in `docs/SUPABASE.md`, then smoke-test checklist and packing sync across two browser sessions or devices.
 - Use `docs/DEPLOY_SMOKE_TEST.md` after deploys, especially for `/`, a listed trip, `/logan-bachelor`, checklist, packing, budget, and mobile layout.
+- Smoke-test `/trips/new` with the smart draft path: create an unlisted Le Blanc-style test trip, confirm the generated manage-page panel appears, and confirm the direct trip URL opens.
 - Do a content review before sharing links more widely. Anything in trip data ships in the public JavaScript bundle, including unlisted trips, addresses, phone numbers, budgets, reservation details, passwords, and notes.
 - Keep small copy/docs fixes current as behavior changes.
 
 ## Next
 
+- Add section-level regeneration after the first smart draft: regenerate itinerary, dining ideas, things to do, checklist, or packing with a preview before replacing existing content.
+- Expand destination packs beyond the Le Blanc Los Cabos pilot as real family/friend trips come up.
 - Add lightweight event support for cookouts, birthdays, get-togethers, and family gatherings without changing the app into SaaS. Initial support is based on `kind: 'event'`, event food, supplies, tasks, and copy blocks.
 - Keep event planning in the same vibe as trips: one shared link, simple pages, no accounts, no admin screens, and copy buttons for group chat.
 - Add event-friendly content where it naturally helps:

@@ -10,12 +10,12 @@ A simple, shareable web hub for our family's trips — bookings, itinerary, stay
 
 ## Stack
 
-Vite + React 19 + TypeScript + Tailwind v4 + React Router 7. All content lives in code — one `Trip` object per trip, registered in a central index.
+Vite + React 19 + TypeScript + Tailwind v4 + React Router 7. Seed trips live in code, while trusted self-serve trips are stored in Supabase as dynamic trip rows.
 
 ## How it's organized
 
 - `/` — **Trips index** (cards for every trip, upcoming first)
-- `/trips/new` — Create a new unlisted trip shell with the shared trip edit PIN
+- `/trips/new` — Build a new unlisted smart trip draft, or start blank, with the shared trip edit PIN
 - `/:tripSlug` — Home for that trip (hero/countdown/today/quick-links/share)
 - `/:tripSlug/trip` — Itinerary + things to do
 - `/:tripSlug/stay` — Stay details + bookings (flights, car, activities)
@@ -48,8 +48,9 @@ For trusted family/friends, use the app:
 
 1. Open `/trips/new`.
 2. Enter the shared trip edit PIN.
-3. Add the trip basics, confirm the share URL, and create the trip.
-4. Use the manage page that opens next to fill in the itinerary, stay, people, checklist, packing, and budget.
+3. Use **Build my trip** for the smart draft path: add the destination/stay, dates, travelers, trip vibe, pace, and must-do items.
+4. Use **Start blank** only when you want an empty starter shell.
+5. The app opens the manage page next with itinerary, restaurants/activities, checklist, packing, bookings, budget placeholders, and copyable messages ready to review.
 
 Self-serve trips are Supabase-backed and default to unlisted direct links. They can be changed to listed from the manage page later.
 
@@ -90,6 +91,8 @@ The checklist and packing toggles are backed by Supabase so changes can sync acr
 - `VITE_SUPABASE_URL` — `https://<project-ref>.supabase.co`
 - `VITE_SUPABASE_ANON_KEY` — the project's **anon / publishable** key
 - `TRIP_EDITOR_PIN` — shared server-only PIN for creating and editing dynamic self-serve trips
+- `OPENAI_API_KEY` — optional server-only key for AI-assisted smart drafts
+- `TRIP_GENERATION_MODEL` — optional OpenAI model override; falls back to `gpt-5.5`
 
 Set them in Vercel → Project Settings → Environment Variables (Production + Preview + Development). Trigger a redeploy after saving — Vite bakes `VITE_` env vars at build time.
 
@@ -104,7 +107,7 @@ The checklist uses two tables:
 
 Packing reuses `checklist_state` with namespaced item IDs like `packing:pk-docs-id`, so no third table is needed.
 
-Owner saves go through `/api/trip-overrides`, and self-serve trip creation goes through `/api/trips`. These APIs require server-only `ADMIN_PIN`, `TRIP_EDITOR_PIN`, and `SUPABASE_SERVICE_ROLE_KEY` env vars. Use `vercel dev` when testing those APIs locally; plain `npm run dev` only starts the Vite client server.
+Owner saves go through `/api/trip-overrides`, and self-serve trip creation goes through `/api/trips`. These APIs require server-only `ADMIN_PIN`, `TRIP_EDITOR_PIN`, and `SUPABASE_SERVICE_ROLE_KEY` env vars. Smart trip generation optionally uses `OPENAI_API_KEY`; if it is missing or returns invalid data, the server still creates a deterministic smart draft. Use `vercel dev` when testing those APIs locally; plain `npm run dev` only starts the Vite client server.
 
 The Supabase posture is intentionally casual: anon clients can read/write checklist rows for shared family links. Keep the app deployed only where that tradeoff is acceptable. Code should always query by the current registered trip slugs or direct trip slug, but this is not authentication.
 

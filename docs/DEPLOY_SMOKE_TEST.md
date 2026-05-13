@@ -7,7 +7,7 @@ Run this after a production or preview deploy.
 - Open `/` and confirm only listed trips appear.
 - Open one listed trip, for example `/okc`.
 - Open `/logan-bachelor` directly and confirm it loads even though it is unlisted.
-- Open `/trips/new` and confirm the self-serve trip wizard loads.
+- Open `/trips/new` and confirm **Build my trip** is the primary mode and **Start blank** is still available.
 - Open `/okc/manage` and `/logan-bachelor/manage` directly and confirm the hidden owner editor loads.
 - Open an invalid slug and confirm it redirects to `/`.
 
@@ -31,7 +31,7 @@ With Supabase configured:
 - Toggle a packing item and confirm it remains checked after refresh.
 - In `/okc/manage`, enter the owner PIN, make a small itinerary or budget edit, save live, refresh `/okc`, and confirm the public page uses the update.
 - Load owner history from `/okc/manage`, restore the previous version, and confirm `/okc` returns to the prior content.
-- In `/trips/new`, create a temporary unlisted dynamic trip with `TRIP_EDITOR_PIN`, confirm the direct URL opens, and confirm it does not appear on `/`.
+- In `/trips/new`, create a temporary unlisted smart draft with `TRIP_EDITOR_PIN`, confirm the generated manage-page panel appears, confirm the direct URL opens, and confirm it does not appear on `/`.
 - In that dynamic trip's manage page, save a small edit with `TRIP_EDITOR_PIN`, switch visibility to listed, refresh `/`, and confirm the trip appears.
 - Delete or hide the temporary dynamic trip after the smoke test if it should not remain visible.
 

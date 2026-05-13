@@ -13,9 +13,12 @@ VITE_SUPABASE_ANON_KEY=<anon-or-publishable-key>
 ADMIN_PIN=<private-owner-pin>
 TRIP_EDITOR_PIN=<shared-trip-editor-pin>
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+OPENAI_API_KEY=<optional-openai-api-key>
+TRIP_GENERATION_MODEL=gpt-5.5
 ```
 
-`ADMIN_PIN`, `TRIP_EDITOR_PIN`, and `SUPABASE_SERVICE_ROLE_KEY` are server-only. Do not prefix them with `VITE_`.
+`ADMIN_PIN`, `TRIP_EDITOR_PIN`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, and `TRIP_GENERATION_MODEL` are server-only. Do not prefix them with `VITE_`.
+`OPENAI_API_KEY` is optional; if it is missing or generation output fails validation, `/api/trips` falls back to the deterministic smart draft builder.
 
 ## Schema
 
@@ -202,7 +205,7 @@ using (true);
 - Static trip files remain the seed source. `trip_overrides.data` stores the current editable fields for a trip without changing the immutable slug.
 - Self-serve trips are stored in `trip_overrides` with `source = 'dynamic'`. Their `trip_slug` is the route slug, `data` stores the full editable trip body, and `visibility` controls whether the trip appears on `/`.
 - `trip_override_history` is append-only history used by `/:tripSlug/manage` for restore. It is read through the owner API, not the public anon client.
-- `/api/trips` creates dynamic trips with `TRIP_EDITOR_PIN` or `ADMIN_PIN`. Dynamic trips can be edited with either PIN; code-backed static trips still require `ADMIN_PIN`.
-- The server APIs need `ADMIN_PIN`, `TRIP_EDITOR_PIN`, `SUPABASE_SERVICE_ROLE_KEY`, and either `SUPABASE_URL` or `VITE_SUPABASE_URL` in the Vercel environment.
+- `/api/trips` creates dynamic trips with `TRIP_EDITOR_PIN` or `ADMIN_PIN`. `action = 'generate'` creates a smart draft using curated destination packs, optional server-side OpenAI generation, and deterministic fallback. `action = 'create'` preserves the blank starter path.
+- The server APIs need `ADMIN_PIN`, `TRIP_EDITOR_PIN`, `SUPABASE_SERVICE_ROLE_KEY`, and either `SUPABASE_URL` or `VITE_SUPABASE_URL` in the Vercel environment. Add `OPENAI_API_KEY` only when you want AI-assisted composition on top of the deterministic generator.
 
 This is not authentication. If a trip needs real privacy, do not put sensitive trip details in the static trip data or open Supabase tables.
