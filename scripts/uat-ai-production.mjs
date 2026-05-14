@@ -8,11 +8,12 @@ const productionUrl = process.env.UAT_PRODUCTION_URL || 'https://thegroupchat.vo
 const keepDeployment = process.env.UAT_KEEP_DEPLOYMENT === '1'
 const keepData = process.env.UAT_KEEP_DATA === '1'
 const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)
+const runSuffix = crypto.randomBytes(3).toString('hex')
 const reportDir = path.resolve('uat-results', `ai-production-${stamp}-${crypto.randomBytes(4).toString('hex')}`)
 const reportJsonPath = path.join(reportDir, 'ai-production-report.json')
 const reportMarkdownPath = path.join(reportDir, 'ai-production-report.md')
 const uatPin = `uat-${crypto.randomBytes(12).toString('hex')}`
-const slug = `codex-uat-ai-${stamp}`
+const slug = process.env.UAT_AI_SLUG || `codex-uat-ai-${stamp}-${runSuffix}`
 let deploymentUrl = null
 let deploymentId = null
 let bypassCookieHeader = ''
@@ -78,10 +79,11 @@ function getBypassCookieHeader() {
   return cookies.join('; ')
 }
 
-async function deploymentPost(pathname, body) {
+async function deploymentPost(pathname, body, options = {}) {
   if (!deploymentUrl) throw new Error('No deployment URL available.')
   const url = new URL(pathname, deploymentUrl)
   let lastError = null
+  const timeoutMs = options.timeoutMs ?? 240000
   for (let attempt = 1; attempt <= 4; attempt += 1) {
     try {
       const response = await fetch(url, {
@@ -91,7 +93,7 @@ async function deploymentPost(pathname, body) {
           ...(bypassCookieHeader ? { cookie: bypassCookieHeader } : {}),
         },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(90000),
+        signal: AbortSignal.timeout(timeoutMs),
       })
       return {
         status: response.status,
@@ -173,7 +175,7 @@ async function main() {
           { title: 'Visit Lovers Beach in Cabo', type: 'activity', timing: 'last-full-day', required: true },
         ],
       },
-    })
+    }, { timeoutMs: 240000 })
 
     addCheck('generate-ai-trip', generate.status === 200, { status: generate.status }, generate.status === 200 ? undefined : generate.content)
     if (generate.status !== 200) throw new Error(`AI UAT generation failed with status ${generate.status}.`)
@@ -206,18 +208,19 @@ async function main() {
   } catch (error) {
     addCheck('ai-production-uat-runner', false, {}, error instanceof Error ? error.message : String(error))
   } finally {
-    if (created && deploymentUrl && !keepData) {
+    const shouldAttemptDelete = created || slug.startsWith('codex-uat-ai-')
+    if (shouldAttemptDelete && deploymentUrl && !keepData) {
       try {
         const deleted = await deploymentPost('/api/trips', {
           action: 'deleteUat',
           pin: uatPin,
           tripSlug: slug,
-        })
+        }, { timeoutMs: 60000 })
         cleanup.push({ action: 'delete-uat-row', ok: deleted.status === 200 || deleted.status === 404, status: deleted.status })
       } catch (error) {
         cleanup.push({ action: 'delete-uat-row', ok: false, error: error instanceof Error ? error.message : String(error) })
       }
-    } else if (created && keepData) {
+    } else if (shouldAttemptDelete && keepData) {
       cleanup.push({ action: 'delete-uat-row', ok: true, status: 'kept' })
     }
 
