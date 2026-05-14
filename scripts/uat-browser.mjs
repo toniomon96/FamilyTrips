@@ -410,6 +410,10 @@ async function testGeneratedRoutes(browser) {
           const height = await page.evaluate(() => document.documentElement.scrollHeight)
           if (height > 14000) throw new Error(`Generated manage page is too tall for the command center: ${height}px.`)
         }
+        await page.getByRole('tab', { name: 'Share' }).click()
+        await expect(page.getByRole('button', { name: 'Copy message' }).first()).toBeVisible()
+        await page.getByRole('tab', { name: 'Smart Assist' }).click()
+        await expect(page.getByLabel('Assist action').locator('option', { hasText: 'Rewrite group-chat summary' })).toHaveCount(1)
         await screenshot(page, `generated-manage-${label}`)
       })
     })

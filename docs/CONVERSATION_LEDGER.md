@@ -129,3 +129,11 @@ Durable notes for product decisions, open questions, and why the app changed. Ke
 - Trip posture: the generated summary uses the saved home base/location anchor, must-do mini-plans, recommended restaurants/activities, and booking/confirmation items. It includes the honest reminder that V1 is not live routing or availability.
 - Event posture: the generated summary uses event date, venue/home base, run-of-show items, tasks, food, and supplies so event sharing does not read like a trip itinerary.
 - Limitation: this is deterministic from saved planner data; it does not rerun live research or create new recommendations.
+
+## 2026-05-14 - Stop/Go Audit Prep
+
+- Ask: Toni wanted another blunt audit before deciding whether this is a good stopping point for Logan/friends.
+- Fix found during audit: the manage command center Share tab showed generated summaries but did not expose per-message copy buttons, even though the public trip page did. The manage Share tab now has `Copy message` buttons.
+- Test posture: browser UAT now verifies generated manage pages can reach the Share tab, see a copy button for summary messages, reach Smart Assist, and find the group-chat summary action.
+- Verification: `npm run test`, `npm run validate:data`, `npm run privacy:scan`, `npm run lint`, `npm run build`, `npm run uat`, `npm run ready:production`, `npm run uat:production`, `npm run uat:ai-production`, and `npm audit --omit=dev --audit-level=moderate` passed locally on 2026-05-14.
+- Honest limitation: passing tests do not prove the app is effortless for every nontechnical user. The strongest evidence is for the Le Blanc / Logan-style path, not every destination or event subtype.

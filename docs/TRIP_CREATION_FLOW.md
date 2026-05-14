@@ -4,9 +4,9 @@ This is the plain-English handoff for how self-serve trip creation works, what t
 
 Last verified locally against a temporary Vercel deployment on 2026-05-14:
 
-- Full lifecycle UAT: `uat-results/uat-20260514124032-04ff4cdd/uat-report.md`
-- Live AI research UAT: `uat-results/ai-production-20260514173907-5f95313a/ai-production-report.md`
-- Production readiness: `uat-results/production-readiness-2026-05-14T17-42-40-101Z/readiness-report.md`
+- Full lifecycle UAT: `uat-results/uat-20260514160018-39aa9215/uat-report.md`
+- Live AI research UAT: `uat-results/ai-production-20260514210257-31773734/ai-production-report.md`
+- Production readiness: `uat-results/production-readiness-2026-05-14T21-02-43-052Z/readiness-report.md`
 
 Important: these reports prove the current local working tree in a temporary deployment. Production gets the latest behavior only after commit, push, and deploy.
 
@@ -122,6 +122,8 @@ Location-aware V1 is search-first, not maps-backed routing. It uses the stay/loc
 - slow planning progress UI appears
 - generated trip opens by direct URL
 - generated manage page opens
+- generated manage Share tab exposes copy buttons for stored summary messages
+- generated manage Smart Assist tab exposes the group-chat summary action
 - manage save/history/restore works
 - visibility can switch listed/unlisted
 - checklist and packing state persists after refresh

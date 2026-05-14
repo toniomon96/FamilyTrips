@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import CopyButton from '../components/CopyButton'
 import Section from '../components/Section'
 import { getTrip } from '../data/trips'
 import { useTrip } from '../context/tripContextCore'
@@ -1255,9 +1256,12 @@ function TripCommandPanel({
         </div>
         {(trip.copyBlocks ?? []).map((block) => (
           <article key={block.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="font-bold text-slate-950">{block.title}</h3>
-              <StatusBadge status={block.status} />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="font-bold text-slate-950">{block.title}</h3>
+                <StatusBadge status={block.status} />
+              </div>
+              <CopyButton text={block.body} label="Copy message" />
             </div>
             <pre className="mt-3 whitespace-pre-wrap rounded-2xl bg-slate-50 p-3 text-sm leading-6 text-slate-700">{block.body}</pre>
           </article>
