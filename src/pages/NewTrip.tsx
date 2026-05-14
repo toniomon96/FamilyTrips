@@ -231,8 +231,9 @@ export default function NewTrip() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Trip edit PIN</label>
+              <label htmlFor="trip-pin" className="block text-sm font-medium text-slate-700 mb-1">Trip edit PIN</label>
               <input
+                id="trip-pin"
                 type="password"
                 autoComplete="current-password"
                 required
@@ -243,8 +244,9 @@ export default function NewTrip() {
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Trip name</label>
+              <label htmlFor="trip-name" className="block text-sm font-medium text-slate-700 mb-1">Trip name</label>
               <input
+                id="trip-name"
                 type="text"
                 required
                 value={name}
@@ -258,10 +260,11 @@ export default function NewTrip() {
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Share URL</label>
+              <label htmlFor="trip-slug" className="block text-sm font-medium text-slate-700 mb-1">Share URL</label>
               <div className="grid grid-cols-[auto_1fr] items-center rounded-xl border border-slate-300 bg-white focus-within:ring-2 focus-within:ring-blue-500">
                 <span className="pl-3 pr-1 text-sm text-slate-500">/</span>
                 <input
+                  id="trip-slug"
                   type="text"
                   required
                   value={slugWasEdited ? customSlug : suggestedSlug}
@@ -284,8 +287,9 @@ export default function NewTrip() {
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Destination or stay</label>
+              <label htmlFor="trip-location" className="block text-sm font-medium text-slate-700 mb-1">Destination or stay</label>
               <input
+                id="trip-location"
                 type="text"
                 required
                 value={location}
@@ -296,8 +300,9 @@ export default function NewTrip() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Start date</label>
+              <label htmlFor="trip-start-date" className="block text-sm font-medium text-slate-700 mb-1">Start date</label>
               <input
+                id="trip-start-date"
                 type="date"
                 required
                 value={startDate}
@@ -307,8 +312,9 @@ export default function NewTrip() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">End date</label>
+              <label htmlFor="trip-end-date" className="block text-sm font-medium text-slate-700 mb-1">End date</label>
               <input
+                id="trip-end-date"
                 type="date"
                 required
                 value={endDate}
@@ -318,8 +324,9 @@ export default function NewTrip() {
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Travelers</label>
+              <label htmlFor="trip-travelers" className="block text-sm font-medium text-slate-700 mb-1">Travelers</label>
               <input
+                id="trip-travelers"
                 type="text"
                 value={travelers}
                 onChange={(event) => setTravelers(event.target.value)}
@@ -332,8 +339,9 @@ export default function NewTrip() {
           {mode === 'smart' && (
             <div className="space-y-5 border-t border-slate-100 pt-5">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Trip brief</label>
+                <label htmlFor="trip-brief" className="block text-sm font-medium text-slate-700 mb-1">Trip brief</label>
                 <textarea
+                  id="trip-brief"
                   rows={4}
                   value={brief}
                   onChange={(event) => setBrief(event.target.value)}
@@ -365,8 +373,8 @@ export default function NewTrip() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Pace</label>
-                  <select value={pace} onChange={(event) => setPace(event.target.value as TripPace)} className={FIELD_CLASS}>
+                  <label htmlFor="trip-pace" className="block text-sm font-medium text-slate-700 mb-1">Pace</label>
+                  <select id="trip-pace" value={pace} onChange={(event) => setPace(event.target.value as TripPace)} className={FIELD_CLASS}>
                     {PACE_OPTIONS.map((option) => (
                       <option key={option.id} value={option.id}>
                         {option.label}
@@ -375,8 +383,9 @@ export default function NewTrip() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Planning style</label>
+                  <label htmlFor="trip-planning-help" className="block text-sm font-medium text-slate-700 mb-1">Planning style</label>
                   <select
+                    id="trip-planning-help"
                     value={planningHelp}
                     onChange={(event) => setPlanningHelp(event.target.value as TripPlanningHelp)}
                     className={FIELD_CLASS}
@@ -391,8 +400,9 @@ export default function NewTrip() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Must-dos</label>
+                <label htmlFor="trip-must-dos" className="block text-sm font-medium text-slate-700 mb-1">Must-dos</label>
                 <textarea
+                  id="trip-must-dos"
                   rows={4}
                   value={mustDos}
                   onChange={(event) => setMustDos(event.target.value)}
@@ -405,8 +415,9 @@ export default function NewTrip() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-slate-100 pt-5">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Template</label>
+              <label htmlFor="trip-template" className="block text-sm font-medium text-slate-700 mb-1">Template</label>
               <select
+                id="trip-template"
                 value={template}
                 onChange={(event) => setTemplate(event.target.value as TripTemplateId)}
                 className={FIELD_CLASS}
@@ -419,8 +430,9 @@ export default function NewTrip() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Stay name</label>
+              <label htmlFor="trip-stay-name" className="block text-sm font-medium text-slate-700 mb-1">Stay name</label>
               <input
+                id="trip-stay-name"
                 type="text"
                 value={stayName}
                 onChange={(event) => setStayName(event.target.value)}
@@ -429,8 +441,9 @@ export default function NewTrip() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Created by</label>
+              <label htmlFor="trip-created-by" className="block text-sm font-medium text-slate-700 mb-1">Created by</label>
               <input
+                id="trip-created-by"
                 type="text"
                 value={createdBy}
                 onChange={(event) => setCreatedBy(event.target.value)}

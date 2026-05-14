@@ -71,7 +71,26 @@ function createStore(url: string, serviceRoleKey: string): TripCreateStore {
       if (error) throw error
     },
     async deleteUatTrip(tripSlug) {
-      const { data, error } = await admin
+      const { data: current, error: currentError } = await admin
+        .from('trip_overrides')
+        .select('trip_slug')
+        .eq('trip_slug', tripSlug)
+        .eq('source', 'dynamic')
+        .eq('created_by', 'Codex UAT')
+        .maybeSingle()
+      if (currentError) throw currentError
+      if (!current) return false
+
+      const { error: historyError } = await admin.from('trip_override_history').delete().eq('trip_slug', tripSlug)
+      if (historyError) throw historyError
+
+      const { error: stateError } = await admin.from('checklist_state').delete().eq('trip_slug', tripSlug)
+      if (stateError) throw stateError
+
+      const { error: itemsError } = await admin.from('checklist_items').delete().eq('trip_slug', tripSlug)
+      if (itemsError) throw itemsError
+
+      const { data: deleted, error: deleteError } = await admin
         .from('trip_overrides')
         .delete()
         .eq('trip_slug', tripSlug)
@@ -79,11 +98,9 @@ function createStore(url: string, serviceRoleKey: string): TripCreateStore {
         .eq('created_by', 'Codex UAT')
         .select('trip_slug')
         .maybeSingle()
-      if (error) throw error
-      if (!data) return false
+      if (deleteError) throw deleteError
+      if (!deleted) return false
 
-      const { error: historyError } = await admin.from('trip_override_history').delete().eq('trip_slug', tripSlug)
-      if (historyError) throw historyError
       return true
     },
   }

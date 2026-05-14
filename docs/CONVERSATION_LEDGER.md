@@ -42,3 +42,11 @@ Durable notes for product decisions, open questions, and why the app changed. Ke
 - Decision: add `npm run uat:smart-trip` as a one-command Le Blanc smart-trip smoke test.
 - Test posture: the script creates a temporary Vercel deployment with a one-time UAT PIN, uses the real `/api/trips` generation path, checks wrong-PIN rejection, verifies generated trip content and routes, deletes the generated `codex-uat-*` row, checks production wrong-PIN behavior, and removes the temporary deployment.
 - Cleanup boundary: the `deleteUat` API action only deletes dynamic rows whose slug starts with `codex-uat-` and whose creator is `Codex UAT`; it is not a general trip delete feature.
+
+## 2026-05-13 - Full Lifecycle UAT Suite
+
+- Ask: Toni wants UAT to catch more than the smart-trip API path before sending the app to Logan.
+- Decision: expand the smoke into `npm run uat`, with scenario controls for smart generation, manage save/history/restore, visibility, checklist/packing persistence, browser rendering, and production smoke.
+- Report posture: every run writes a machine-readable JSON report and a Toni-readable Markdown report under `uat-results/`.
+- Cleanup posture: Codex-created UAT rows stay namespaced as `codex-uat-*`; cleanup now removes dynamic trip rows, history rows, checklist state, and UAT checklist items.
+- Safety posture: the suite creates a one-time temporary UAT PIN for preview deployments and never needs to print or use the permanent edit PIN.

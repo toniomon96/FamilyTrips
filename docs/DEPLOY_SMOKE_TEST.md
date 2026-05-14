@@ -4,13 +4,30 @@ Run this after a production or preview deploy.
 
 ## Automated UAT
 
-Run `npm run uat:smart-trip` when Vercel CLI is authenticated.
+Run `npm run uat` when Vercel CLI is authenticated.
 
-The script creates a temporary preview deployment with a one-time UAT edit PIN, verifies wrong-PIN rejection, generates a Le Blanc Los Cabos honeymoon draft, checks the direct trip and manage routes, deletes the generated `codex-uat-*` test row, confirms production still rejects a wrong PIN, and removes the temporary deployment.
+The full suite creates a temporary preview deployment with a one-time UAT edit PIN, runs the traveler lifecycle, writes reports under `uat-results/`, deletes generated `codex-uat-*` rows and checklist/packing state, confirms production still rejects a wrong PIN, and removes the temporary deployment.
+
+Commands:
+
+- `npm run uat` - full suite: smart trip, manage edit/history/restore, visibility, checklist/packing, browser, and production smoke.
+- `npm run uat:quick` - core smart-trip smoke plus non-mutating production smoke.
+- `npm run uat:smart-trip` - backward-compatible alias for the quick suite.
+- `npm run uat:browser` - rendered browser pass on a temporary generated trip.
+- `npm run uat:production` - non-mutating production smoke only.
+
+Useful controls:
+
+- `UAT_SCENARIOS=smart-trip,manage-edit,browser` runs a subset.
+- `UAT_KEEP_DEPLOYMENT=1` keeps the temporary Vercel deployment for manual inspection.
+- `UAT_KEEP_DATA=1` keeps generated UAT rows, but visibility is reset to unlisted when possible.
+- `UAT_PRODUCTION_URL=https://thegroupchat.voyage` overrides the production smoke target.
 
 To clean up older Codex-created UAT rows during the same run, set a comma-separated list first:
 
-`$env:UAT_CLEANUP_SLUGS = 'codex-uat-le-blanc-20260513174343'; npm run uat:smart-trip`
+`$env:UAT_CLEANUP_SLUGS = 'codex-uat-le-blanc-20260513174343'; npm run uat:quick`
+
+The Markdown report is the one to send Toni. The JSON report is for agents and CI.
 
 ## Routes
 

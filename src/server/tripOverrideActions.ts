@@ -119,6 +119,7 @@ function rowForSave(
   data: TripOverrideData,
   updatedBy: string,
   source: 'seed' | 'dynamic',
+  current?: TripOverrideRow | null,
 ): TripOverrideRow {
   return {
     trip_slug: tripSlug,
@@ -128,6 +129,12 @@ function rowForSave(
     updated_by: updatedBy,
     source,
     visibility: tripVisibilityFromData(data),
+    ...(source === 'dynamic'
+      ? {
+          created_at: current?.created_at,
+          created_by: current?.created_by,
+        }
+      : {}),
   }
 }
 
@@ -194,7 +201,7 @@ export async function runTripOverrideAction(
     }
 
     const version = await nextVersion(store, body.tripSlug)
-    const row = rowForSave(body.tripSlug, version, historyRow.data, ownerName(body.updatedBy), rowSource)
+    const row = rowForSave(body.tripSlug, version, historyRow.data, ownerName(body.updatedBy), rowSource, current)
     await store.upsertCurrent(row)
     await store.insertHistory({ ...row, restored_from_version: historyRow.version })
 
@@ -223,7 +230,7 @@ export async function runTripOverrideAction(
   }
 
   const version = await nextVersion(store, body.tripSlug)
-  const row = rowForSave(body.tripSlug, version, data, ownerName(body.updatedBy), rowSource)
+  const row = rowForSave(body.tripSlug, version, data, ownerName(body.updatedBy), rowSource, current)
   await store.upsertCurrent(row)
   await store.insertHistory({ ...row, restored_from_version: null })
 

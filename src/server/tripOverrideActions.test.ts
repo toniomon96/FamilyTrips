@@ -112,6 +112,8 @@ describe('trip override API action handler', () => {
       updated_by: 'creator',
       source: 'dynamic',
       visibility: 'unlisted',
+      created_at: '2026-01-01T00:00:00.000Z',
+      created_by: 'Codex UAT',
     }
     const state = createStore([], dynamicCurrent)
     const result = await runTripOverrideAction(
@@ -129,6 +131,8 @@ describe('trip override API action handler', () => {
     expect(state.current?.version).toBe(2)
     expect(state.current?.data.name).toBe('Updated Honeymoon')
     expect(state.current?.source).toBe('dynamic')
+    expect(state.current?.created_by).toBe('Codex UAT')
+    expect(state.current?.created_at).toBe(dynamicCurrent.created_at)
   })
 
   it('rejects invalid saved payloads before writing', async () => {
