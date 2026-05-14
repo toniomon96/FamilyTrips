@@ -35,7 +35,7 @@ export default function BottomNav({
       className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-t border-slate-200"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <ul className="mx-auto max-w-xl flex">
+      <ul className="mx-auto flex max-w-2xl px-2">
         {items.map((item) => {
           const to = item.to ? `${basePath}/${item.to}`.replace(/\/+/g, '/') : basePath || '/'
           return (

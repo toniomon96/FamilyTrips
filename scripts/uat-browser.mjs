@@ -346,10 +346,12 @@ async function testStaticAndEventManageCopy(browser) {
     await withCheckedPage(browser, 'event-manage-copy-mobile', { width: 390, height: 844 }, async (page) => {
       await page.goto(`${baseUrl}/family-cookout/manage`, { waitUntil: 'domcontentloaded' })
       await expect(page.getByRole('heading', { name: /Manage/i })).toBeVisible({ timeout: 45000 })
-      await expect(page.getByRole('tab', { name: 'Run of show' })).toBeVisible()
-      await expect(page.getByRole('tab', { name: 'Moments' })).toBeVisible()
-      await expect(page.getByRole('tab', { name: 'Event tasks' })).toBeVisible()
-      await expect(page.getByRole('tab', { name: 'Supplies' })).toBeVisible()
+      const picker = page.getByLabel('Workspace section')
+      await expect(picker).toBeVisible()
+      await expect(picker.locator('option', { hasText: 'Run of show' })).toHaveCount(1)
+      await expect(picker.locator('option', { hasText: 'Moments' })).toHaveCount(1)
+      await expect(picker.locator('option', { hasText: 'Event tasks' })).toHaveCount(1)
+      await expect(picker.locator('option', { hasText: 'Supplies' })).toHaveCount(1)
       await expect(page.getByText('Confirm, assign, then share.')).toBeVisible()
       await expect(page.getByText('Book, confirm, then share.')).toHaveCount(0)
       await screenshot(page, 'event-manage-copy-mobile')
@@ -400,8 +402,13 @@ async function testGeneratedRoutes(browser) {
       await withCheckedPage(browser, `generated-manage-${label}`, viewport, async (page) => {
         await page.goto(`${baseUrl}/${generatedSlug}/manage?created=1&draft=generated`, { waitUntil: 'domcontentloaded' })
         await expect(page.getByText('Draft created')).toBeVisible({ timeout: 45000 })
-        await expect(page.getByRole('tab', { name: 'Overview' })).toBeVisible()
-        await expect(page.getByRole('tab', { name: 'Advanced Editor' })).toBeVisible()
+        if (label === 'mobile') {
+          await expect(page.getByLabel('Workspace section')).toBeVisible()
+          await expect(page.getByLabel('Workspace section').locator('option', { hasText: 'Advanced Editor' })).toHaveCount(1)
+        } else {
+          await expect(page.getByRole('tab', { name: 'Overview' })).toBeVisible()
+          await expect(page.getByRole('tab', { name: 'Advanced Editor' })).toBeVisible()
+        }
         await expect(page.getByText('Draft confidence')).toBeVisible()
         await expect(page.getByText('Based on this brief')).toBeVisible()
         await expect(page.getByText('Recommended places')).toBeVisible()
@@ -410,9 +417,20 @@ async function testGeneratedRoutes(browser) {
           const height = await page.evaluate(() => document.documentElement.scrollHeight)
           if (height > 14000) throw new Error(`Generated manage page is too tall for the command center: ${height}px.`)
         }
-        await page.getByRole('tab', { name: 'Share' }).click()
+        if (label === 'mobile') {
+          await page.getByLabel('Trip edit PIN').fill(pin)
+          await page.getByLabel('Workspace section').selectOption('bookings')
+          await expect(page.getByText('Add flights and timing later.')).toBeVisible()
+          await page.getByLabel('Arrival flight / time').fill('AA 123 lands 2:15 PM at SJD')
+          await page.getByRole('button', { name: 'Save travel details' }).click()
+          await expect(page.getByText(/Saved version/i)).toBeVisible({ timeout: 45000 })
+          await page.getByLabel('Workspace section').selectOption('share')
+        } else {
+          await page.getByRole('tab', { name: 'Share' }).click()
+        }
         await expect(page.getByRole('button', { name: 'Copy message' }).first()).toBeVisible()
-        await page.getByRole('tab', { name: 'Smart Assist' }).click()
+        if (label === 'mobile') await page.getByLabel('Workspace section').selectOption('assist')
+        else await page.getByRole('tab', { name: 'Smart Assist' }).click()
         await expect(page.getByLabel('Assist action').locator('option', { hasText: 'Rewrite group-chat summary' })).toHaveCount(1)
         await screenshot(page, `generated-manage-${label}`)
       })

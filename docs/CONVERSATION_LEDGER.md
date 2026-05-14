@@ -137,3 +137,11 @@ Durable notes for product decisions, open questions, and why the app changed. Ke
 - Test posture: browser UAT now verifies generated manage pages can reach the Share tab, see a copy button for summary messages, reach Smart Assist, and find the group-chat summary action.
 - Verification: `npm run test`, `npm run validate:data`, `npm run privacy:scan`, `npm run lint`, `npm run build`, `npm run uat`, `npm run ready:production`, `npm run uat:production`, `npm run uat:ai-production`, and `npm audit --omit=dev --audit-level=moderate` passed locally on 2026-05-14.
 - Honest limitation: passing tests do not prove the app is effortless for every nontechnical user. The strongest evidence is for the Le Blanc / Logan-style path, not every destination or event subtype.
+
+## 2026-05-14 - Command Center Travel Details Edit
+
+- Ask: Toni tested the live flow and noted that Logan may need to add flight info and arrival times later, and mobile scrolling/spacing still felt wonky.
+- Decision: add the first command-center quick edit instead of forcing normal users into Advanced Editor.
+- UX change: mobile manage pages now use a `Workspace section` picker instead of horizontal chip scrolling, and primary page containers have slightly more side padding with horizontal overflow hidden.
+- Edit change: the Bookings command-center section for trips now has a `Travel details` card where trusted editors can add arrival flight/time, departure flight/time, check-in/departure timing, and travel notes, then save live.
+- Test posture: browser UAT now fills the mobile travel-details quick edit and saves it with the temporary UAT PIN.

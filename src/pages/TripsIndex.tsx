@@ -19,7 +19,7 @@ export default function TripsIndex() {
       >
         Skip to content
       </a>
-      <main id="main" className="mx-auto max-w-xl px-4 pt-8 pb-10 space-y-6">
+      <main id="main" className="mx-auto w-full max-w-2xl px-5 pt-8 pb-10 sm:px-6 space-y-6">
         <header className="space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">

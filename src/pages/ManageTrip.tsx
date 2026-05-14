@@ -735,10 +735,26 @@ function CommandTabs({
   isEvent: boolean
 }) {
   const panels = commandPanelsForKind(isEvent)
+  const selectId = useId()
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
-      <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label={isEvent ? 'Event workspace sections' : 'Trip workspace sections'}>
+    <div className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-2">
+      <label className="block space-y-1 sm:hidden" htmlFor={selectId}>
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Workspace section</span>
+        <select
+          id={selectId}
+          value={activePanel}
+          onChange={(event) => onChange(event.target.value as CommandPanel)}
+          className={FIELD_CLASS}
+        >
+          {panels.map((panel) => (
+            <option key={panel.id} value={panel.id}>
+              {panel.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="hidden gap-2 overflow-x-auto pb-1 sm:flex" role="tablist" aria-label={isEvent ? 'Event command tabs' : 'Trip command tabs'}>
         {panels.map((panel) => (
           <button
             key={panel.id}
@@ -951,14 +967,149 @@ function buildMiniPlans(trip: Trip): MiniPlan[] {
   })
 }
 
+type TravelDirection = 'arrival' | 'departure'
+
+function travelTitle(direction: TravelDirection): string {
+  return direction === 'arrival' ? 'Arrival flight' : 'Departure flight'
+}
+
+function travelMatcher(direction: TravelDirection): RegExp {
+  return direction === 'arrival' ? /arrival|inbound/i : /departure|return|outbound/i
+}
+
+function findTravelBooking(bookings: Booking[], direction: TravelDirection): Booking | undefined {
+  const matcher = travelMatcher(direction)
+  return bookings.find((booking) => booking.kind === 'flight' && matcher.test(booking.title))
+}
+
+function patchTravelBooking(trip: Trip, direction: TravelDirection, details: string): Partial<Trip> {
+  const trimmed = details.trim()
+  const matcher = travelMatcher(direction)
+  let found = false
+  const bookings = trip.bookings.flatMap((booking) => {
+    if (booking.kind !== 'flight' || !matcher.test(booking.title)) return [booking]
+    found = true
+    if (!trimmed) return []
+    return [{
+      ...booking,
+      title: travelTitle(direction),
+      details: trimmed,
+      status: 'confirmed' as PlanItemStatus,
+      nextStep: 'Confirm airport transfer timing after flights are final.',
+    }]
+  })
+
+  if (!found && trimmed) {
+    bookings.push({
+      id: makeStableIdFromLabel('bk', travelTitle(direction), existingIds(bookings)),
+      kind: 'flight',
+      title: travelTitle(direction),
+      when: direction === 'arrival' ? trip.startDate : trip.endDate,
+      details: trimmed,
+      status: 'confirmed',
+      nextStep: 'Confirm airport transfer timing after flights are final.',
+    })
+  }
+
+  const patch: Partial<Trip> = { bookings }
+  if (trip.planner?.brief) {
+    patch.planner = {
+      ...trip.planner,
+      brief: {
+        ...trip.planner.brief,
+        [direction === 'arrival' ? 'arrivalWindow' : 'departureWindow']: trimmed || undefined,
+      },
+    }
+  }
+  return patch
+}
+
+function TravelDetailsQuickEditor({
+  trip,
+  onPatchTrip,
+  canSave,
+  saveState,
+}: {
+  trip: Trip
+  onPatchTrip: (patch: Partial<Trip>) => void
+  canSave: boolean
+  saveState: SaveState
+}) {
+  const arrival = findTravelBooking(trip.bookings, 'arrival')
+  const departure = findTravelBooking(trip.bookings, 'departure')
+
+  return (
+    <section className="rounded-3xl border border-blue-200 bg-blue-50 p-4 shadow-sm sm:p-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wide text-blue-800">Travel details</p>
+          <h2 className="mt-1 text-xl font-bold text-slate-950">Add flights and timing later.</h2>
+          <p className="mt-1 text-sm leading-6 text-blue-950">
+            Use this for flight numbers, landing times, pickup notes, check-in timing, or anything that was missing when the trip was created.
+          </p>
+        </div>
+        <button
+          type="submit"
+          disabled={!canSave}
+          className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+        >
+          {saveState === 'saving' ? 'Saving...' : 'Save travel details'}
+        </button>
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <TextInput
+          label="Arrival flight / time"
+          value={arrival?.details ?? trip.planner?.brief?.arrivalWindow ?? ''}
+          placeholder="AA 123 lands 2:15 PM at SJD"
+          onChange={(value) => onPatchTrip(patchTravelBooking(trip, 'arrival', value))}
+        />
+        <TextInput
+          label="Departure flight / time"
+          value={departure?.details ?? trip.planner?.brief?.departureWindow ?? ''}
+          placeholder="UA 456 leaves 11:30 AM"
+          onChange={(value) => onPatchTrip(patchTravelBooking(trip, 'departure', value))}
+        />
+        <TextInput
+          label={trip.kind === 'event' ? 'Start timing' : 'Check-in / arrival timing'}
+          value={trip.stay.checkIn}
+          onChange={(value) => onPatchTrip({ stay: { ...trip.stay, checkIn: value } })}
+        />
+        <TextInput
+          label={trip.kind === 'event' ? 'End timing' : 'Check-out / departure timing'}
+          value={trip.stay.checkOut}
+          onChange={(value) => onPatchTrip({ stay: { ...trip.stay, checkOut: value } })}
+        />
+      </div>
+      <div className="mt-3">
+        <TextArea
+          label="Travel notes"
+          rows={3}
+          value={trip.stay.notes}
+          placeholder="Airport transfer, concierge note, arrival buffer, luggage plan..."
+          onChange={(value) => onPatchTrip({ stay: { ...trip.stay, notes: value || undefined } })}
+        />
+      </div>
+      <p className="mt-3 text-xs leading-5 text-blue-900">
+        Enter the trip edit PIN at the top of the page first. These edits save live and will show up for anyone with the trip link.
+      </p>
+    </section>
+  )
+}
+
 function TripCommandPanel({
   trip,
   activePanel,
   onCopyTripLink,
+  onPatchTrip,
+  canSave,
+  saveState,
 }: {
   trip: Trip
   activePanel: Exclude<CommandPanel, 'advanced' | 'assist'>
   onCopyTripLink: () => void
+  onPatchTrip?: (patch: Partial<Trip>) => void
+  canSave: boolean
+  saveState: SaveState
 }) {
   const isEvent = trip.kind === 'event'
   const planner = trip.planner
@@ -1176,13 +1327,18 @@ function TripCommandPanel({
           sourceIds: item.sourceIds,
         }))
     return (
-      <section className="grid grid-cols-1 gap-3 lg:grid-cols-2" role="tabpanel">
-        {bookingPanelItems.map((item) => <MiniPlanCard key={item.id} sourceRefs={sourceRefs} plan={item} />)}
-        {bookingPanelItems.length === 0 && (
-          <p className="rounded-2xl bg-white p-4 text-sm text-slate-600">
-            {isEvent ? 'No event tasks are listed yet.' : 'No bookings are listed yet.'}
-          </p>
+      <section className="space-y-3" role="tabpanel">
+        {!isEvent && onPatchTrip && (
+          <TravelDetailsQuickEditor trip={trip} onPatchTrip={onPatchTrip} canSave={canSave} saveState={saveState} />
         )}
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {bookingPanelItems.map((item) => <MiniPlanCard key={item.id} sourceRefs={sourceRefs} plan={item} />)}
+          {bookingPanelItems.length === 0 && (
+            <p className="rounded-2xl bg-white p-4 text-sm text-slate-600">
+              {isEvent ? 'No event tasks are listed yet.' : 'No bookings are listed yet.'}
+            </p>
+          )}
+        </div>
       </section>
     )
   }
@@ -1633,6 +1789,7 @@ export default function ManageTrip() {
             />
             <input
               type="password"
+              aria-label="Trip edit PIN"
               autoComplete="current-password"
               value={pin}
               placeholder="Trip edit PIN"
@@ -1727,6 +1884,9 @@ export default function ManageTrip() {
           trip={draft}
           activePanel={activePanel}
           onCopyTripLink={handleCopyTripLink}
+          onPatchTrip={patchDraft}
+          canSave={canSave}
+          saveState={saveState}
         />
       )}
 

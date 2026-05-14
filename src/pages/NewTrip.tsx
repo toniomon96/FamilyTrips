@@ -506,7 +506,7 @@ export default function NewTrip() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <main className="mx-auto max-w-3xl px-4 pt-5 pb-12 space-y-4">
+      <main className="mx-auto w-full max-w-3xl px-5 pt-5 pb-12 sm:px-6 space-y-4">
         <Link to="/" className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900">
           <span aria-hidden>←</span>
           <span>All trips</span>
