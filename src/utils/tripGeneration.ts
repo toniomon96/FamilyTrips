@@ -9,11 +9,18 @@ import type {
   DraftStrength,
   PackingItem,
   Person,
+  PlannerMiniPlan,
+  PlannerRecommendationBestFor,
+  PlannerRecommendationCandidate,
+  PlannerRecommendationCategory,
+  PlannerSavedBrief,
+  PlannerSavedMustDo,
   PlannerSourceRef,
   PlanItemStatus,
   Trip,
 } from '../types/trip'
 import { findDestinationPack, type DestinationPack, type DestinationPackItem } from './destinationPacks.js'
+import { isIsoDate } from './dateValidation.js'
 import { makeStableIdFromLabel } from './tripOverrides.js'
 import { createTripShell, isValidTripSlug, slugifyTripSlug, validateTripForSave, type TripTemplateId } from './tripShell.js'
 
@@ -148,6 +155,7 @@ export type ResearchBundle = {
   insights: string[]
   notes: string[]
   usedSearch: boolean
+  recommendations?: PlannerRecommendationCandidate[]
 }
 
 export type TripGenerationSummary = {
@@ -231,10 +239,6 @@ function splitLines(value: string): string[] {
     .split(/\n+/g)
     .map((line) => line.trim())
     .filter(Boolean)
-}
-
-function isIsoDate(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T12:00:00`).getTime())
 }
 
 function addDays(date: string, days: number): string {
@@ -637,7 +641,293 @@ function mergeResearch(base: ResearchBundle, extra?: ResearchBundle | null): Res
     insights: [...base.insights, ...extra.insights].filter(Boolean).slice(0, 20),
     notes: [...base.notes, ...extra.notes].filter(Boolean).slice(0, 20),
     usedSearch: base.usedSearch || extra.usedSearch,
+    recommendations: mergeRecommendations([...(base.recommendations ?? []), ...(extra.recommendations ?? [])]),
   }
+}
+
+function savedMustDo(item: NormalizedTripMustDo): PlannerSavedMustDo {
+  return {
+    title: item.title,
+    type: item.type,
+    priority: item.required ? 'required' : item.priority ?? 'nice-to-have',
+    timing: item.timing,
+    date: item.date,
+    bookingStatus: item.bookingStatus,
+    logistics: item.logistics,
+    location: item.location,
+    duration: item.duration,
+    why: item.why,
+  }
+}
+
+function makePlannerBrief(input: NormalizedTripGenerationBrief): PlannerSavedBrief {
+  return {
+    destination: limitText(input.destination, 240),
+    locationText: limitText(input.locationText, 500),
+    stayName: limitText(input.stayName, 240),
+    stayAddress: limitText(input.stayAddress, 500),
+    venueName: limitText(input.venueName, 240),
+    venueAddress: limitText(input.venueAddress, 500),
+    startDate: input.startDate,
+    endDate: input.endDate,
+    arrivalWindow: input.arrivalWindow,
+    departureWindow: input.departureWindow,
+    travelers: limitText(input.travelers, 500),
+    travelerNames: input.travelerNames,
+    guestCount: limitText(input.guestCount, 120),
+    vibe: input.vibe,
+    pace: input.pace,
+    planningHelp: input.planningHelp,
+    budgetStyle: limitText(input.budgetStyle, 500),
+    foodPreferences: limitText(input.foodPreferences, 800),
+    kidsAndAges: limitText(input.kidsAndAges, 800),
+    mobilityNotes: limitText(input.mobilityNotes, 800),
+    mustDos: input.mustDos.map(savedMustDo),
+    niceToHaves: input.niceToHaves.map(savedMustDo),
+    confirmedItems: input.confirmedItems.map(savedMustDo),
+    followUpAnswers: input.followUpAnswers,
+    rawContext: limitText(input.rawContext || input.brief || input.sourceText, 4000),
+  }
+}
+
+function candidateSourceIds(item: DestinationPackItem, sourceRefs: PlannerSourceRef[]): string[] {
+  const source = item.url ? sourceRefs.find((ref) => ref.url === item.url) : undefined
+  return source ? [source.id] : []
+}
+
+function candidateBestFor(text: string, category: PlannerRecommendationCategory): PlannerRecommendationBestFor[] {
+  const lower = text.toLowerCase()
+  if (category === 'restaurant') {
+    if (lower.includes('breakfast')) return ['breakfast', 'morning', 'flexible']
+    if (lower.includes('lunch') || lower.includes('pizza') || lower.includes('room service')) return ['lunch', 'dinner', 'flexible']
+    return ['dinner', 'evening']
+  }
+  if (lower.includes('golf')) return ['morning']
+  if (lower.includes('horse')) return ['morning', 'afternoon']
+  if (lower.includes('lovers') || lower.includes('beach') || lower.includes('boat')) return ['morning', 'afternoon']
+  if (lower.includes('spa') || lower.includes('wellness')) return ['morning', 'afternoon']
+  if (lower.includes('pool') || lower.includes('downtime')) return ['afternoon', 'flexible']
+  return ['flexible']
+}
+
+function candidateCategoryFromPack(item: DestinationPackItem, kind: 'restaurant' | 'activity'): PlannerRecommendationCategory {
+  if (kind === 'restaurant') return 'restaurant'
+  const lower = `${item.name} ${item.category}`.toLowerCase()
+  if (lower.includes('experience') || lower.includes('show') || lower.includes('nightlife')) return 'entertainment'
+  if (lower.includes('transfer') || lower.includes('transport') || lower.includes('concierge')) return 'logistics'
+  return 'activity'
+}
+
+function candidateFromPackItem(
+  item: DestinationPackItem,
+  kind: 'restaurant' | 'activity',
+  pack: DestinationPack,
+  ids: string[],
+  sourceRefs: PlannerSourceRef[],
+): PlannerRecommendationCandidate {
+  const category = candidateCategoryFromPack(item, kind)
+  return {
+    id: nextId('rec', item.name, ids),
+    name: item.name,
+    category,
+    sourceIds: candidateSourceIds(item, sourceRefs),
+    addressOrArea: item.address ?? (category === 'restaurant' ? pack.name : pack.location),
+    bestFor: candidateBestFor(`${item.name} ${item.category} ${item.notes}`, category),
+    whyItFits: item.notes,
+    bookingStatus: item.bookingNote ? 'needs-confirmation' : 'suggested',
+    nextStep: item.bookingNote ?? 'Confirm current details before relying on this recommendation.',
+    logisticsNote: category === 'restaurant'
+      ? 'Treat resort dining details as needing confirmation for menu, dress code, and reservation rules.'
+      : 'Confirm transportation, timing, and current availability before building the day around this.',
+    confidence: 'high',
+    status: item.bookingNote ? 'needs-confirmation' : 'suggested',
+    why: 'Matched from curated destination context.',
+  }
+}
+
+function bookingStatusToPlanStatus(status?: BookingStatus): PlanItemStatus {
+  return itemStatusFromBookingStatus(status)
+}
+
+function candidateFromMustDo(mustDo: NormalizedTripMustDo, ids: string[]): PlannerRecommendationCandidate {
+  const lower = mustDo.title.toLowerCase()
+  const category: PlannerRecommendationCategory = mustDo.type === 'dining'
+    ? 'restaurant'
+    : mustDo.type === 'travel'
+      ? 'logistics'
+      : 'activity'
+  return {
+    id: nextId('rec', mustDo.title, ids),
+    name: mustDo.title,
+    category,
+    sourceIds: ['src-user-brief'],
+    addressOrArea: mustDo.location,
+    bestFor: candidateBestFor(mustDo.title, category),
+    whyItFits: mustDo.why ?? 'This was called out in the planning brief, so it should anchor the draft.',
+    bookingStatus: bookingStatusToPlanStatus(mustDo.bookingStatus),
+    nextStep: mustDo.bookingStatus === 'confirmed'
+      ? 'Add exact time, address, and confirmation details if they are not already captured.'
+      : lower.includes('lovers')
+        ? 'Confirm boat or water taxi plan, weather, beach conditions, and transportation.'
+        : lower.includes('horse')
+          ? 'Choose a provider and confirm pickup, fees, weight limits, and clothing.'
+          : lower.includes('golf')
+            ? 'Book tee time and confirm transportation, club rental, and dress code.'
+            : 'Confirm provider, timing, cost, and logistics before relying on this plan.',
+    logisticsNote: itemNotes(
+      mustDo.logistics,
+      lower.includes('lovers') ? 'Likely outside resort; treat as a flexible Cabo outing and confirm transportation.' : undefined,
+      lower.includes('horse') ? 'Likely outside resort; confirm pickup location and what to wear.' : undefined,
+      lower.includes('golf') ? 'Likely outside resort; confirm tee time, transfer, clubs, and dress code.' : undefined,
+    ) || 'Confirm logistics before building exact timing around this.',
+    confidence: 'medium',
+    status: bookingStatusToPlanStatus(mustDo.bookingStatus),
+    why: mustDo.why ?? 'Priority anchor from the user brief.',
+  }
+}
+
+function normalizeRecommendation(candidate: PlannerRecommendationCandidate, ids: string[]): PlannerRecommendationCandidate {
+  const id = candidate.id || nextId('rec', candidate.name, ids)
+  if (candidate.id) ids.push(candidate.id)
+  const category = candidate.category ?? 'fallback'
+  return {
+    ...candidate,
+    id,
+    name: candidate.name.trim(),
+    category,
+    bestFor: candidate.bestFor?.length ? candidate.bestFor : candidateBestFor(candidate.name, category),
+    sourceIds: candidate.sourceIds ?? [],
+    whyItFits: candidate.whyItFits || candidate.why || 'Generated recommendation from available planning context.',
+    confidence: candidate.confidence ?? 'low',
+    bookingStatus: candidate.bookingStatus ?? candidate.status ?? 'needs-confirmation',
+    status: candidate.status ?? candidate.bookingStatus ?? 'needs-confirmation',
+  }
+}
+
+function mergeRecommendations(candidates: PlannerRecommendationCandidate[]): PlannerRecommendationCandidate[] {
+  const result: PlannerRecommendationCandidate[] = []
+  const seen = new Set<string>()
+  const ids: string[] = []
+  for (const candidate of candidates) {
+    if (!candidate?.name?.trim()) continue
+    const normalized = normalizeRecommendation(candidate, ids)
+    const key = `${normalized.category}:${normalized.name.toLowerCase()}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    result.push(normalized)
+  }
+  return result.slice(0, 24)
+}
+
+function buildRecommendationCandidates(
+  input: NormalizedTripGenerationBrief,
+  pack: DestinationPack | undefined,
+  research: ResearchBundle,
+): PlannerRecommendationCandidate[] {
+  const ids: string[] = []
+  const curated = input.planType === 'event' || !pack
+    ? []
+    : [
+        ...pack.restaurants.map((item) => candidateFromPackItem(item, 'restaurant', pack, ids, research.sourceRefs)),
+        ...pack.activities.map((item) => candidateFromPackItem(item, 'activity', pack, ids, research.sourceRefs)),
+      ]
+  const mustDoCandidates = input.planType === 'event'
+    ? []
+    : [...input.confirmedItems, ...input.mustDos, ...input.niceToHaves].map((item) => candidateFromMustDo(item, ids))
+  const knownSourceIds = new Set(research.sourceRefs.map((source) => source.id))
+  const merged = mergeRecommendations([
+    ...curated,
+    ...(research.recommendations ?? []),
+    ...mustDoCandidates,
+  ])
+  return merged.map((candidate) => ({
+    ...candidate,
+    sourceIds: (candidate.sourceIds ?? []).filter((sourceId) => knownSourceIds.has(sourceId)),
+  }))
+}
+
+function recommendationKeywords(candidate: PlannerRecommendationCandidate): string[] {
+  return mustDoKeywords(`${candidate.name} ${candidate.category} ${candidate.whyItFits} ${candidate.addressOrArea ?? ''}`)
+}
+
+function matchRecommendationForMustDo(
+  mustDo: NormalizedTripMustDo,
+  recommendations: PlannerRecommendationCandidate[],
+): PlannerRecommendationCandidate | undefined {
+  const mustKeywords = mustDoKeywords(`${mustDo.title} ${mustDo.location ?? ''}`)
+  if (mustKeywords.length === 0) return undefined
+  let best: { candidate: PlannerRecommendationCandidate; score: number } | undefined
+  for (const candidate of recommendations) {
+    const candidateKeywords = new Set(recommendationKeywords(candidate))
+    const score = mustKeywords.reduce((total, keyword) => {
+      const direct = candidate.name.toLowerCase().includes(keyword) || candidate.category.toLowerCase().includes(keyword)
+      const contextual = candidateKeywords.has(keyword)
+      return total + (direct ? 3 : contextual ? 1 : 0)
+    }, 0)
+    if (score > 0 && (!best || score > best.score)) best = { candidate, score }
+  }
+  return best?.candidate
+}
+
+function miniPlanPackingImplication(mustDo: NormalizedTripMustDo): string {
+  const lower = mustDo.title.toLowerCase()
+  if (lower.includes('golf')) return 'Golf outfit, golf shoes/glove if used, sunscreen, hat, and confirm whether clubs are rented.'
+  if (lower.includes('horse')) return 'Closed-toe shoes, sun protection, and clothes that can handle sand/dust.'
+  if (lower.includes('lovers') || lower.includes('boat')) return 'Swimwear, sandals or water shoes, sunscreen, towel, and a small dry bag.'
+  if (mustDo.type === 'dining') return 'Dinner outfit that matches the restaurant dress code once confirmed.'
+  return 'Add any activity-specific clothing, ID, sunscreen, medication, or comfort items once provider details are known.'
+}
+
+function buildMiniPlans(
+  input: NormalizedTripGenerationBrief,
+  dates: string[],
+  recommendations: PlannerRecommendationCandidate[],
+): PlannerMiniPlan[] {
+  const ids: string[] = []
+  const placements = placeMustDos(input, dates)
+  const dateByTitle = new Map<string, string>()
+  for (const [date, items] of placements.entries()) {
+    for (const item of items) dateByTitle.set(item.title.toLowerCase(), date)
+  }
+
+  return [...input.confirmedItems, ...input.mustDos, ...input.niceToHaves].map((mustDo) => {
+    const candidate = matchRecommendationForMustDo(mustDo, recommendations)
+    const recommendedDate = mustDo.date && dates.includes(mustDo.date) ? mustDo.date : dateByTitle.get(mustDo.title.toLowerCase())
+    const lower = mustDo.title.toLowerCase()
+    const recommendedTimeWindow = mustDo.type === 'dining'
+      ? 'Dinner'
+      : lower.includes('golf')
+        ? 'Morning'
+        : lower.includes('horse') || lower.includes('lovers')
+          ? 'Morning or afternoon'
+          : mustDo.timing === 'first-day'
+            ? 'Arrival day'
+            : mustDo.timing === 'last-full-day'
+              ? 'Final full day'
+              : 'Flexible daytime block'
+    const bookingStatus = bookingStatusToPlanStatus(mustDo.bookingStatus)
+    return {
+      id: nextId('mp', mustDo.title, ids),
+      title: mustDo.title,
+      type: mustDo.type,
+      priority: mustDo.required ? 'required' : mustDo.priority ?? 'nice-to-have',
+      recommendedDate,
+      recommendedTimeWindow,
+      candidateId: candidate?.id,
+      sourceIds: candidate?.sourceIds?.length ? candidate.sourceIds : ['src-user-brief'],
+      status: bookingStatus,
+      why: mustDo.why ?? candidate?.whyItFits ?? 'This is a priority from the planning brief and should shape the itinerary.',
+      nextStep: candidate?.nextStep ?? (bookingStatus === 'confirmed'
+        ? 'Add exact time, address, and confirmation details.'
+        : 'Confirm provider, time, cost, transportation, and cancellation rules.'),
+      logisticsNote: itemNotes(candidate?.logisticsNote, mustDo.logistics),
+      packingImplication: miniPlanPackingImplication(mustDo),
+      checklistItemId: makeStableIdFromLabel('ck', mustDo.title, []),
+      bookingId: makeStableIdFromLabel('bk', mustDo.title, []),
+      budgetItemId: makeStableIdFromLabel('b', mustDo.title, []),
+      confidence: candidate?.confidence ?? 'medium',
+    }
+  })
 }
 
 function itemStatusFromBookingStatus(status?: BookingStatus): PlanItemStatus {
@@ -657,25 +947,15 @@ function itemNotes(...parts: (string | undefined)[]): string {
   return parts.filter(Boolean).join(' ')
 }
 
+function limitText(value: string, maxLength: number): string {
+  const trimmed = value.trim()
+  if (trimmed.length <= maxLength) return trimmed
+  return `${trimmed.slice(0, maxLength - 1).trimEnd()}…`
+}
+
 function makePeople(names: string[]): Person[] {
   const ids: string[] = []
   return names.map((name) => ({ id: nextId('p', name, ids), name, role: 'Traveler' }))
-}
-
-function packRestaurantActivity(item: DestinationPackItem, ids: string[], sourceRefs: PlannerSourceRef[]): Activity {
-  const source = item.url ? sourceRefs.find((ref) => ref.url === item.url) : undefined
-  return {
-    id: nextId('td', item.name, ids),
-    name: item.name,
-    category: item.category,
-    address: item.address,
-    url: item.url,
-    notes: itemNotes(item.notes, item.bookingNote ? `Next step: ${item.bookingNote}` : undefined),
-    status: item.bookingNote ? 'needs-confirmation' : 'suggested',
-    why: 'Matched from curated or source-backed destination context.',
-    nextStep: item.bookingNote ?? 'Confirm current hours and fit before relying on this idea.',
-    sourceIds: source ? [source.id] : undefined,
-  }
 }
 
 function makeContactFromPack(item: DestinationPackItem, ids: string[]): Contact {
@@ -733,8 +1013,13 @@ function mustDoBookingKind(type: TripMustDoType): Booking['kind'] {
   return 'other'
 }
 
-function makeChecklist(input: NormalizedTripGenerationBrief, pack?: DestinationPack): ChecklistItem[] {
+function miniPlanByTitle(miniPlans: PlannerMiniPlan[]): Map<string, PlannerMiniPlan> {
+  return new Map(miniPlans.map((plan) => [plan.title.toLowerCase(), plan]))
+}
+
+function makeChecklist(input: NormalizedTripGenerationBrief, pack?: DestinationPack, miniPlans: PlannerMiniPlan[] = []): ChecklistItem[] {
   const ids: string[] = []
+  const miniPlanMap = miniPlanByTitle(miniPlans)
   const items: ChecklistItem[] = [
     {
       id: nextId('ck', 'confirm stay details', ids),
@@ -776,15 +1061,21 @@ function makeChecklist(input: NormalizedTripGenerationBrief, pack?: DestinationP
   ]
 
   for (const mustDo of [...input.confirmedItems, ...input.mustDos, ...input.niceToHaves]) {
+    const miniPlan = miniPlanMap.get(mustDo.title.toLowerCase())
     items.push({
       id: nextId('ck', mustDo.title, ids),
       title: mustDo.bookingStatus === 'confirmed' ? `Add final details for ${mustDo.title}` : `${mustDo.required ? 'Book / confirm' : 'Consider'} ${mustDo.title}`,
       category: mustDo.type === 'dining' ? 'Dining' : 'Activities',
       done: false,
-      notes: mustDo.date ? `Preferred date: ${mustDo.date}` : 'Generated from the must-do list.',
+      notes: itemNotes(
+        mustDo.date ? `Preferred date: ${mustDo.date}.` : 'Generated from the must-do list.',
+        miniPlan?.logisticsNote,
+        miniPlan?.packingImplication ? `Packing: ${miniPlan.packingImplication}` : undefined,
+      ),
       status: itemStatusFromBookingStatus(mustDo.bookingStatus),
       why: mustDo.required ? 'Required planning anchor.' : 'Nice-to-have option from the brief.',
-      nextStep: mustDo.bookingStatus === 'confirmed' ? 'Add time, address, and confirmation details.' : 'Confirm provider, time, cost, and transportation.',
+      nextStep: miniPlan?.nextStep ?? (mustDo.bookingStatus === 'confirmed' ? 'Add time, address, and confirmation details.' : 'Confirm provider, time, cost, and transportation.'),
+      sourceIds: miniPlan?.sourceIds,
     })
   }
 
@@ -810,7 +1101,7 @@ function makeChecklist(input: NormalizedTripGenerationBrief, pack?: DestinationP
   return items
 }
 
-function makePacking(input: NormalizedTripGenerationBrief): PackingItem[] {
+function makePacking(input: NormalizedTripGenerationBrief, miniPlans: PlannerMiniPlan[] = []): PackingItem[] {
   const ids: string[] = []
   const items: PackingItem[] = [
     { id: nextId('pk', 'passport id', ids), title: 'Passport / photo ID', category: 'Travel docs' },
@@ -842,11 +1133,26 @@ function makePacking(input: NormalizedTripGenerationBrief): PackingItem[] {
   if (input.mobilityNotes) {
     items.push({ id: nextId('pk', 'mobility comfort', ids), title: 'Mobility or comfort items', category: 'Accessibility', notes: input.mobilityNotes })
   }
+  for (const miniPlan of miniPlans) {
+    if (!miniPlan.packingImplication) continue
+    const title = `${miniPlan.title} packing check`
+    if (items.some((item) => item.title.toLowerCase() === title.toLowerCase())) continue
+    items.push({
+      id: nextId('pk', title, ids),
+      title,
+      category: 'Activity-specific',
+      notes: miniPlan.packingImplication,
+      status: 'suggested',
+      sourceIds: miniPlan.sourceIds,
+      why: `Generated from the ${miniPlan.title} mini-plan.`,
+    })
+  }
   return items
 }
 
-function makeBudget(input: NormalizedTripGenerationBrief): BudgetItem[] {
+function makeBudget(input: NormalizedTripGenerationBrief, miniPlans: PlannerMiniPlan[] = []): BudgetItem[] {
   const ids: string[] = []
+  const miniPlanMap = miniPlanByTitle(miniPlans)
   const items: BudgetItem[] = [
     {
       id: nextId('b', 'airport transportation', ids),
@@ -866,21 +1172,28 @@ function makeBudget(input: NormalizedTripGenerationBrief): BudgetItem[] {
     },
   ]
   for (const mustDo of [...input.confirmedItems, ...input.mustDos, ...input.niceToHaves]) {
+    const miniPlan = miniPlanMap.get(mustDo.title.toLowerCase())
     items.push({
       id: nextId('b', mustDo.title, ids),
       name: mustDo.title,
       total: 0,
       splitCount: Math.max(1, input.travelerNames.length || 1),
       status: mustDo.bookingStatus === 'confirmed' ? 'estimate' : 'tbd',
-      notes: mustDo.bookingStatus === 'confirmed' ? 'Add actual cost if it needs to be tracked.' : 'Update after booking or confirming price.',
+      notes: itemNotes(
+        mustDo.bookingStatus === 'confirmed' ? 'Add actual cost if it needs to be tracked.' : 'Update after booking or confirming price.',
+        miniPlan?.logisticsNote,
+      ),
       why: mustDo.required ? 'Budget placeholder for a priority anchor.' : 'Optional budget placeholder.',
+      nextStep: miniPlan?.nextStep,
+      sourceIds: miniPlan?.sourceIds,
     })
   }
   return items
 }
 
-function makeBookings(input: NormalizedTripGenerationBrief, pack?: DestinationPack): Booking[] {
+function makeBookings(input: NormalizedTripGenerationBrief, pack?: DestinationPack, miniPlans: PlannerMiniPlan[] = []): Booking[] {
   const ids: string[] = []
+  const miniPlanMap = miniPlanByTitle(miniPlans)
   const bookings: Booking[] = [
     {
       id: nextId('bk', input.stayName, ids),
@@ -905,15 +1218,21 @@ function makeBookings(input: NormalizedTripGenerationBrief, pack?: DestinationPa
   ]
 
   for (const mustDo of [...input.confirmedItems, ...input.mustDos, ...input.niceToHaves]) {
+    const miniPlan = miniPlanMap.get(mustDo.title.toLowerCase())
     bookings.push({
       id: nextId('bk', mustDo.title, ids),
       kind: mustDoBookingKind(mustDo.type),
       title: mustDo.title,
-      when: mustDo.date,
-      details: 'Generated from the must-do list. Confirm time, provider, cost, transportation, and cancellation details.',
+      when: mustDo.date ?? miniPlan?.recommendedDate,
+      details: itemNotes(
+        'Generated from the must-do mini-plan.',
+        miniPlan?.recommendedTimeWindow ? `Suggested window: ${miniPlan.recommendedTimeWindow}.` : undefined,
+        miniPlan?.logisticsNote,
+      ),
       status: itemStatusFromBookingStatus(mustDo.bookingStatus),
       why: mustDo.required ? 'Priority anchor from the brief.' : 'Optional idea from the brief.',
-      nextStep: mustDo.bookingStatus === 'confirmed' ? 'Add exact time, address, and confirmation details.' : 'Book or confirm provider, timing, cost, and transportation.',
+      nextStep: miniPlan?.nextStep ?? (mustDo.bookingStatus === 'confirmed' ? 'Add exact time, address, and confirmation details.' : 'Book or confirm provider, timing, cost, and transportation.'),
+      sourceIds: miniPlan?.sourceIds,
     })
   }
 
@@ -939,6 +1258,20 @@ function chooseDinnerForDay(index: number, isLastFullDay: boolean, pack?: Destin
   if (isLastFullDay) return findRestaurant(pack, 'lumiere')
   const order = ['ocean', 'bella', 'yama', 'blanc', 'habibi', 'blanc-pizza']
   return findRestaurant(pack, order[index % order.length])
+}
+
+function chooseRestaurantCandidateForDay(
+  index: number,
+  isLastFullDay: boolean,
+  recommendations: PlannerRecommendationCandidate[],
+): PlannerRecommendationCandidate | undefined {
+  const restaurants = recommendations.filter((candidate) => candidate.category === 'restaurant')
+  if (restaurants.length === 0) return undefined
+  if (isLastFullDay) {
+    const special = restaurants.find((candidate) => /lumiere|special|fine|romantic/i.test(`${candidate.name} ${candidate.whyItFits}`))
+    if (special) return special
+  }
+  return restaurants[index % restaurants.length]
 }
 
 function placeMustDos(input: NormalizedTripGenerationBrief, dates: string[]): Map<string, NormalizedTripGenerationBrief['mustDos']> {
@@ -967,9 +1300,15 @@ function placeMustDos(input: NormalizedTripGenerationBrief, dates: string[]): Ma
   return map
 }
 
-function makeItinerary(input: NormalizedTripGenerationBrief, pack?: DestinationPack): Day[] {
+function makeItinerary(
+  input: NormalizedTripGenerationBrief,
+  pack?: DestinationPack,
+  recommendations: PlannerRecommendationCandidate[] = [],
+  miniPlans: PlannerMiniPlan[] = [],
+): Day[] {
   const dates = dateRange(input.startDate, input.endDate)
   const mustDosByDate = placeMustDos(input, dates)
+  const miniPlanMap = miniPlanByTitle(miniPlans)
   const spa = findActivity(pack, /spa|wellness/)
   const pool = findActivity(pack, /pool|beach downtime/)
   const days: Day[] = []
@@ -980,6 +1319,7 @@ function makeItinerary(input: NormalizedTripGenerationBrief, pack?: DestinationP
     const isLastFullDay = dates.length > 2 && index === dates.length - 2
     const assignedMustDos = mustDosByDate.get(date) ?? []
     const dinner = chooseDinnerForDay(index, isLastFullDay, pack)
+    const dinnerCandidate = chooseRestaurantCandidateForDay(index, isLastFullDay, recommendations)
     const items: Day['items'] = []
 
     if (isFirst) {
@@ -987,7 +1327,7 @@ function makeItinerary(input: NormalizedTripGenerationBrief, pack?: DestinationP
         {
           time: input.arrivalWindow || 'Arrival',
           title: 'Arrive, check in, and settle into the resort',
-          notes: 'Keep the first day intentionally light. Add flight and transfer times once confirmed.',
+          notes: 'Keep the first day intentionally light. Add flight and transfer times once confirmed. Location-aware planning uses the stay as an anchor, but exact transfer time still needs confirmation.',
           address: pack?.address ?? input.destination,
           status: 'needs-confirmation',
           why: 'Arrival days need buffer so the plan does not start too aggressively.',
@@ -995,12 +1335,15 @@ function makeItinerary(input: NormalizedTripGenerationBrief, pack?: DestinationP
         },
         {
           time: 'Evening',
-          title: dinner ? `Easy dinner at ${dinner.name}` : 'Easy arrival dinner',
-          notes: dinner ? `${dinner.notes} Confirm reservation needs before relying on this.` : 'Choose something low-effort after travel.',
+          title: dinnerCandidate ? `Easy dinner at ${dinnerCandidate.name}` : dinner ? `Easy dinner at ${dinner.name}` : 'Easy arrival dinner',
+          notes: dinnerCandidate
+            ? `${dinnerCandidate.whyItFits} ${dinnerCandidate.logisticsNote ?? 'Confirm reservation needs before relying on this.'}`
+            : dinner ? `${dinner.notes} Confirm reservation needs before relying on this.` : 'Choose something low-effort after travel.',
           link: dinner?.url,
-          status: dinner ? 'needs-confirmation' : 'suggested',
+          status: dinnerCandidate?.bookingStatus ?? (dinner ? 'needs-confirmation' : 'suggested'),
           why: 'Arrival night should be easy and low-friction.',
-          nextStep: dinner?.bookingNote ?? 'Choose an easy dinner once arrival time is known.',
+          nextStep: dinnerCandidate?.nextStep ?? dinner?.bookingNote ?? 'Choose an easy dinner once arrival time is known.',
+          sourceIds: dinnerCandidate?.sourceIds,
         },
       )
     } else if (isLast) {
@@ -1032,26 +1375,23 @@ function makeItinerary(input: NormalizedTripGenerationBrief, pack?: DestinationP
     }
 
     for (const mustDo of assignedMustDos) {
+      const miniPlan = miniPlanMap.get(mustDo.title.toLowerCase())
+      const candidate = miniPlan?.candidateId ? recommendations.find((item) => item.id === miniPlan.candidateId) : undefined
       items.push({
-        time: isFirst || isLast ? undefined : 'Afternoon',
-        title: mustDo.title,
+        time: isFirst || isLast ? miniPlan?.recommendedTimeWindow : miniPlan?.recommendedTimeWindow ?? 'Afternoon',
+        title: candidate && candidate.name.toLowerCase() !== mustDo.title.toLowerCase()
+          ? `${mustDo.title}: ${candidate.name}`
+          : mustDo.title,
         notes: itemNotes(
           'Priority item from the trip brief.',
-          mustDo.title.toLowerCase().includes('lovers')
-            ? 'Confirm boat or water taxi logistics and weather before going.'
-            : undefined,
-          mustDo.title.toLowerCase().includes('horse')
-            ? 'Confirm pickup, park fees, weight limits, and clothing.'
-            : undefined,
-          mustDo.title.toLowerCase().includes('golf')
-            ? 'Confirm tee time, transportation, club rentals, and dress code.'
-            : undefined,
-          mustDo.logistics,
+          miniPlan?.logisticsNote,
+          candidate?.whyItFits,
         ),
-        address: mustDo.location,
+        address: mustDo.location ?? candidate?.addressOrArea,
         status: itemStatusFromBookingStatus(mustDo.bookingStatus),
-        why: mustDo.why ?? (mustDo.required ? 'Required must-do from the brief.' : 'Optional idea from the brief.'),
-        nextStep: mustDo.bookingStatus === 'confirmed' ? 'Add exact time and confirmation details.' : 'Confirm provider, time, cost, transportation, and cancellation rules.',
+        why: miniPlan?.why ?? mustDo.why ?? (mustDo.required ? 'Required must-do from the brief.' : 'Optional idea from the brief.'),
+        nextStep: miniPlan?.nextStep ?? (mustDo.bookingStatus === 'confirmed' ? 'Add exact time and confirmation details.' : 'Confirm provider, time, cost, transportation, and cancellation rules.'),
+        sourceIds: miniPlan?.sourceIds,
       })
     }
 
@@ -1065,12 +1405,15 @@ function makeItinerary(input: NormalizedTripGenerationBrief, pack?: DestinationP
       })
       items.push({
         time: 'Dinner',
-        title: dinner ? `Dinner at ${dinner.name}` : 'Dinner reservation',
-        notes: dinner ? `${dinner.notes} Confirm reservation and dress code.` : 'Pick a dinner spot and add reservation details.',
+        title: dinnerCandidate ? `Dinner at ${dinnerCandidate.name}` : dinner ? `Dinner at ${dinner.name}` : 'Dinner reservation',
+        notes: dinnerCandidate
+          ? `${dinnerCandidate.whyItFits} ${dinnerCandidate.logisticsNote ?? 'Confirm reservation and dress code.'}`
+          : dinner ? `${dinner.notes} Confirm reservation and dress code.` : 'Pick a dinner spot and add reservation details.',
         link: dinner?.url,
-        status: dinner ? 'needs-confirmation' : 'needs-booking',
-        why: dinner ? 'Dinner option matched from destination context.' : 'The evening needs a placeholder until dinner is chosen.',
-        nextStep: dinner?.bookingNote ?? 'Choose dinner and add reservation details.',
+        status: dinnerCandidate?.bookingStatus ?? (dinner ? 'needs-confirmation' : 'needs-booking'),
+        why: dinnerCandidate ? 'Dinner option matched from source-backed or curated destination context.' : dinner ? 'Dinner option matched from destination context.' : 'The evening needs a placeholder until dinner is chosen.',
+        nextStep: dinnerCandidate?.nextStep ?? dinner?.bookingNote ?? 'Choose dinner and add reservation details.',
+        sourceIds: dinnerCandidate?.sourceIds,
       })
     }
 
@@ -1294,12 +1637,27 @@ export function buildDeterministicTrip(
     createdBy: input.createdBy,
   })
   const summary = makeSummary(input, pack, quality, research, options.source ?? 'deterministic')
+  const recommendations = buildRecommendationCandidates(input, pack, research)
+  const miniPlans = buildMiniPlans(input, dateRange(input.startDate, input.endDate), recommendations)
   const activityIds: string[] = []
-  const thingsToDo: Activity[] = [
-    ...(input.planType === 'event' ? [] : pack?.restaurants.map((item) => packRestaurantActivity(item, activityIds, research.sourceRefs)) ?? []),
-    ...(input.planType === 'event' ? [] : pack?.activities.map((item) => packRestaurantActivity(item, activityIds, research.sourceRefs)) ?? []),
-  ]
-  for (const mustDo of [...input.confirmedItems, ...input.mustDos, ...input.niceToHaves]) thingsToDo.push(mapMustDoToActivity(mustDo, activityIds))
+  const thingsToDo: Activity[] = input.planType === 'event'
+    ? []
+    : recommendations
+        .filter((candidate) => candidate.category !== 'logistics')
+        .map((candidate) => ({
+          id: nextId('td', candidate.name, activityIds),
+          name: candidate.name,
+          category: candidate.category === 'restaurant' ? 'Dining' : candidate.category,
+          address: candidate.addressOrArea,
+          notes: itemNotes(candidate.whyItFits, candidate.logisticsNote),
+          status: candidate.bookingStatus ?? candidate.status,
+          why: candidate.why ?? candidate.whyItFits,
+          nextStep: candidate.nextStep,
+          sourceIds: candidate.sourceIds,
+        }))
+  if (input.planType !== 'event' && thingsToDo.length === 0) {
+    for (const mustDo of [...input.confirmedItems, ...input.mustDos, ...input.niceToHaves]) thingsToDo.push(mapMustDoToActivity(mustDo, activityIds))
+  }
 
   const contactIds: string[] = []
   const contacts: Contact[] = [
@@ -1334,13 +1692,13 @@ export function buildDeterministicTrip(
         input.planType === 'event' ? 'Event mode uses this section for venue/location details.' : undefined,
       ),
     },
-    bookings: input.planType === 'event' ? [] : makeBookings(input, pack),
-    itinerary: input.planType === 'event' ? makeEventItinerary(input) : makeItinerary(input, pack),
+    bookings: input.planType === 'event' ? [] : makeBookings(input, pack, miniPlans),
+    itinerary: input.planType === 'event' ? makeEventItinerary(input) : makeItinerary(input, pack, recommendations, miniPlans),
     thingsToDo,
     people: input.travelerNames.length ? makePeople(input.travelerNames) : base.people,
     contacts,
-    checklist: input.planType === 'event' ? [] : makeChecklist(input, pack),
-    packing: input.planType === 'event' ? [] : makePacking(input),
+    checklist: input.planType === 'event' ? [] : makeChecklist(input, pack, miniPlans),
+    packing: input.planType === 'event' ? [] : makePacking(input, miniPlans),
     eventTasks: input.planType === 'event' ? makeEventTasks(input) : undefined,
     supplies: input.planType === 'event' ? makeEventSupplies(input) : undefined,
     food: input.planType === 'event' ? makeEventFood(input) : undefined,
@@ -1350,7 +1708,7 @@ export function buildDeterministicTrip(
           { id: 'b-food-drinks', name: 'Food and drinks', total: 0, splitCount: 1, status: 'tbd', notes: input.foodPreferences || 'Add estimate after menu is chosen.' },
           { id: 'b-supplies', name: 'Supplies and setup', total: 0, splitCount: 1, status: 'tbd', notes: 'Add supplies, decor, games, rentals, or cleanup costs.' },
         ]
-      : makeBudget(input),
+      : makeBudget(input, miniPlans),
     planner: {
       draftStrength: summary.draftStrength,
       warnings: quality.warnings,
@@ -1360,6 +1718,15 @@ export function buildDeterministicTrip(
       sourceRefs: research.sourceRefs,
       questions: quality.questions.map((item) => item.question),
       notes: summary.notes,
+      brief: makePlannerBrief(input),
+      recommendations,
+      miniPlans,
+      researchMode: research.usedSearch ? 'search' : pack ? 'curated' : 'fallback',
+      locationLimitations: [
+        'Search-first location awareness uses stay, venue, destination, curated packs, and web sources when available.',
+        'V1 does not calculate exact distance, drive time, live hours, live prices, or availability.',
+        'Confirm transportation, current hours, reservation rules, and activity provider details before relying on the plan.',
+      ],
     },
   }
 
@@ -1394,6 +1761,7 @@ function sanitizedAiBudget(budget: BudgetItem[]): BudgetItem[] {
 }
 
 function normalizeAiTrip(candidate: Trip, fallback: Trip): Trip {
+  const basePlanner = fallback.planner ?? candidate.planner
   return {
     ...candidate,
     slug: fallback.slug,
@@ -1416,7 +1784,15 @@ function normalizeAiTrip(candidate: Trip, fallback: Trip): Trip {
     food: Array.isArray(candidate.food) ? candidate.food : fallback.food,
     supplies: Array.isArray(candidate.supplies) ? candidate.supplies : fallback.supplies,
     eventTasks: Array.isArray(candidate.eventTasks) ? candidate.eventTasks : fallback.eventTasks,
-    planner: candidate.planner ?? fallback.planner,
+    planner: basePlanner ? {
+      ...basePlanner,
+      ...(candidate.planner ?? {}),
+      brief: candidate.planner?.brief ?? fallback.planner?.brief,
+      recommendations: candidate.planner?.recommendations ?? fallback.planner?.recommendations,
+      miniPlans: candidate.planner?.miniPlans ?? fallback.planner?.miniPlans,
+      researchMode: candidate.planner?.researchMode ?? fallback.planner?.researchMode,
+      locationLimitations: candidate.planner?.locationLimitations ?? fallback.planner?.locationLimitations,
+    } : undefined,
   }
 }
 
@@ -1465,7 +1841,6 @@ function markAiFallback(fallback: TripGenerationResult): TripGenerationResult {
       planner: fallback.trip.planner
         ? {
             ...fallback.trip.planner,
-            sourceMode: 'ai-fallback',
             notes: fallback.trip.planner.notes?.includes(note)
               ? fallback.trip.planner.notes
               : [...(fallback.trip.planner.notes ?? []), note],
@@ -1529,6 +1904,11 @@ export async function generateSmartTrip(
           sourceMode: research.usedSearch ? 'search' : 'ai',
           sourceRefs: research.sourceRefs,
           questions: quality.questions.map((item) => item.question),
+          brief: candidate.planner?.brief ?? fallback.trip.planner?.brief,
+          recommendations: candidate.planner?.recommendations ?? fallback.trip.planner?.recommendations,
+          miniPlans: candidate.planner?.miniPlans ?? fallback.trip.planner?.miniPlans,
+          researchMode: candidate.planner?.researchMode ?? fallback.trip.planner?.researchMode,
+          locationLimitations: candidate.planner?.locationLimitations ?? fallback.trip.planner?.locationLimitations,
         },
       },
       generationSummary: makeSummary(input, pack, quality, research, 'ai'),

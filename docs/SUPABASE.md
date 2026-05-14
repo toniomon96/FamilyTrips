@@ -14,17 +14,20 @@ ADMIN_PIN=<private-owner-pin>
 TRIP_EDITOR_PIN=<shared-trip-editor-pin>
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 OPENAI_API_KEY=<optional-openai-api-key>
-TRIP_GENERATION_MODEL=gpt-5.5
-TRIP_RESEARCH_MODEL=gpt-5.5
+TRIP_RESEARCH_MODEL=gpt-5-mini
 TRIP_RESEARCH_ENABLED=1
 TRIP_RESEARCH_MAX_QUERIES=4
+TRIP_RESEARCH_TIMEOUT_MS=60000
+TRIP_AI_PLANNER_ENABLED=0
+TRIP_GENERATION_MODEL=gpt-5-mini
+TRIP_PLANNER_TIMEOUT_MS=60000
 TRIP_API_RATE_LIMIT=60
 TRIP_API_RATE_WINDOW_MS=60000
 TRIP_API_MAX_BODY_BYTES=262144
 ```
 
-`ADMIN_PIN`, `TRIP_EDITOR_PIN`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `TRIP_GENERATION_MODEL`, `TRIP_RESEARCH_MODEL`, `TRIP_RESEARCH_ENABLED`, `TRIP_RESEARCH_MAX_QUERIES`, `TRIP_API_RATE_LIMIT`, `TRIP_API_RATE_WINDOW_MS`, and `TRIP_API_MAX_BODY_BYTES` are server-only. Do not prefix them with `VITE_`.
-`OPENAI_API_KEY` is optional; if it is missing, research is disabled, or generation output fails validation, `/api/trips` falls back to the curated/deterministic smart draft builder.
+`ADMIN_PIN`, `TRIP_EDITOR_PIN`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `TRIP_RESEARCH_MODEL`, `TRIP_RESEARCH_ENABLED`, `TRIP_RESEARCH_MAX_QUERIES`, `TRIP_RESEARCH_TIMEOUT_MS`, `TRIP_AI_PLANNER_ENABLED`, `TRIP_GENERATION_MODEL`, `TRIP_PLANNER_TIMEOUT_MS`, `TRIP_API_RATE_LIMIT`, `TRIP_API_RATE_WINDOW_MS`, and `TRIP_API_MAX_BODY_BYTES` are server-only. Do not prefix them with `VITE_`.
+`OPENAI_API_KEY` is optional; if it is missing, research is disabled, or generation output fails validation, `/api/trips` falls back to the curated/deterministic smart draft builder. The experimental AI composer is controlled by `TRIP_AI_PLANNER_ENABLED`; keep it off unless the composer path has passed UAT.
 The `TRIP_API_*` values are optional guardrails for the trusted PIN planning APIs; the defaults are suitable for normal family/friends use.
 
 ## Schema

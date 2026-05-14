@@ -7,7 +7,7 @@ import {
   RequestGuardError,
 } from './_requestGuards.js'
 import { runTripCreateAction, type TripCreateStore } from '../src/server/tripActions.js'
-import type { PlannerSourceRef, Trip } from '../src/types/trip.js'
+import type { PlannerRecommendationCandidate, PlannerRecommendationCategory, PlannerRecommendationBestFor, PlannerSourceRef, Trip } from '../src/types/trip.js'
 import { TRIP_OVERRIDE_SELECT, type TripOverrideHistoryRow, type TripOverrideRow } from '../src/utils/tripOverrides.js'
 import type {
   NormalizedTripGenerationBrief,
@@ -334,12 +334,29 @@ function safeHttpUrl(value: unknown): string | undefined {
   }
 }
 
+function asString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
 function parseAiTrip(value: unknown): Trip | null {
   const text = extractResponseText(value)
   if (!text) return null
   const parsed = JSON.parse(text) as unknown
   if (!isRecord(parsed) || !isRecord(parsed.trip)) return null
   return stripNulls(parsed.trip) as Trip
+}
+
+function extractJsonObject(text: string): unknown | null {
+  const trimmed = text.trim()
+  if (!trimmed) return null
+  const start = trimmed.indexOf('{')
+  const end = trimmed.lastIndexOf('}')
+  if (start < 0 || end < start) return null
+  try {
+    return JSON.parse(trimmed.slice(start, end + 1)) as unknown
+  } catch {
+    return null
+  }
 }
 
 function collectSourceRefs(value: unknown, refs: PlannerSourceRef[] = [], depth = 0): PlannerSourceRef[] {
@@ -368,16 +385,83 @@ function collectSourceRefs(value: unknown, refs: PlannerSourceRef[] = [], depth 
   return refs
 }
 
+const RESEARCH_CATEGORIES = new Set<PlannerRecommendationCategory>(['restaurant', 'activity', 'entertainment', 'logistics', 'fallback'])
+const RESEARCH_BEST_FOR = new Set<PlannerRecommendationBestFor>(['breakfast', 'lunch', 'dinner', 'morning', 'afternoon', 'evening', 'rainy-day', 'flexible'])
+
+function addSourceRef(sourceRefs: PlannerSourceRef[], title: string, url: string | undefined): string[] {
+  if (!url) return []
+  const existing = sourceRefs.find((source) => source.url === url)
+  if (existing) return [existing.id]
+  const id = `src-search-${sourceRefs.length + 1}`
+  sourceRefs.push({
+    id,
+    title: title || url,
+    url,
+    kind: 'search',
+    note: 'Returned by live web research.',
+  })
+  return [id]
+}
+
+function parseBestFor(value: unknown): PlannerRecommendationBestFor[] {
+  const values = Array.isArray(value) ? value : typeof value === 'string' ? value.split(/[,/]/g) : []
+  const bestFor = values
+    .map((item) => asString(item).toLowerCase() as PlannerRecommendationBestFor)
+    .filter((item) => RESEARCH_BEST_FOR.has(item))
+  return bestFor.length ? bestFor : ['flexible']
+}
+
+function parseResearchRecommendations(text: string, sourceRefs: PlannerSourceRef[]): PlannerRecommendationCandidate[] {
+  const parsed = extractJsonObject(text)
+  if (!isRecord(parsed) || !Array.isArray(parsed.recommendations)) return []
+  const recommendations: PlannerRecommendationCandidate[] = []
+  for (const [index, item] of parsed.recommendations.entries()) {
+    if (!isRecord(item)) continue
+    const name = asString(item.name)
+    if (!name) continue
+    const category = RESEARCH_CATEGORIES.has(asString(item.category) as PlannerRecommendationCategory)
+      ? asString(item.category) as PlannerRecommendationCategory
+      : 'fallback'
+    const sourceUrl = safeHttpUrl(item.sourceUrl ?? item.url)
+    const sourceIds = addSourceRef(sourceRefs, asString(item.sourceTitle) || name, sourceUrl)
+    const confidence = asString(item.confidence).toLowerCase()
+    const bookingStatus = asString(item.bookingStatus) === 'needs-booking'
+      ? 'needs-booking'
+      : asString(item.bookingStatus) === 'suggested'
+        ? 'suggested'
+        : asString(item.bookingStatus) === 'confirmed'
+          ? 'confirmed'
+          : 'needs-confirmation'
+    recommendations.push({
+      id: `rec-search-${index + 1}`,
+      name,
+      category,
+      sourceIds,
+      addressOrArea: asString(item.addressOrArea) || undefined,
+      bestFor: parseBestFor(item.bestFor),
+      whyItFits: asString(item.whyItFits) || asString(item.notes) || 'Suggested by live web research; confirm details before relying on it.',
+      bookingStatus,
+      nextStep: asString(item.nextStep) || 'Confirm current details, transportation, and booking requirements.',
+      logisticsNote: asString(item.logisticsNote) || 'Confirm transportation and current operating details before relying on exact timing.',
+      confidence: confidence === 'high' || confidence === 'medium' || confidence === 'low' ? confidence : 'medium',
+      status: bookingStatus,
+      why: asString(item.whyItFits) || undefined,
+    })
+  }
+  return recommendations.slice(0, 12)
+}
+
 function parseResearchBundle(value: unknown): ResearchBundle | null {
   const sourceRefs = collectSourceRefs(value).slice(0, 12)
   const text = extractResponseText(value) ?? ''
+  const recommendations = parseResearchRecommendations(text, sourceRefs)
   const insights = text
     .split(/\r?\n/g)
     .map((line) => line.replace(/^\s*[-*]\s*/, '').trim())
     .filter((line) => line.length > 0)
     .slice(0, 12)
 
-  if (sourceRefs.length === 0 && insights.length === 0) return null
+  if (sourceRefs.length === 0 && insights.length === 0 && recommendations.length === 0) return null
 
   return {
     sourceRefs,
@@ -385,7 +469,8 @@ function parseResearchBundle(value: unknown): ResearchBundle | null {
     notes: sourceRefs.length > 0
       ? ['Live web search returned source references for review.']
       : ['OpenAI returned research text without durable source URLs.'],
-    usedSearch: sourceRefs.length > 0,
+    usedSearch: sourceRefs.length > 0 || recommendations.some((item) => (item.sourceIds ?? []).length > 0),
+    recommendations,
   }
 }
 
@@ -402,128 +487,157 @@ function summarizeOpenAiErrorBody(body: string): string | null {
   return body.replace(/\s+/g, ' ').trim().slice(0, 240)
 }
 
+function envTimeoutMs(name: string, fallback: number, min: number, max: number): number {
+  const parsed = Number(process.env[name])
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.max(min, Math.min(max, parsed))
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { ...init, signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 function createOpenAiResearcher(apiKey: string | undefined, model: string | undefined): TripResearcher | undefined {
   const researchEnabled = (process.env.TRIP_RESEARCH_ENABLED ?? '1').toLowerCase()
   if (!apiKey || researchEnabled === '0' || researchEnabled === 'false') return undefined
   return async (input: NormalizedTripGenerationBrief, quality: BriefQuality) => {
     const maxQueries = Number(process.env.TRIP_RESEARCH_MAX_QUERIES || 4)
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: model || process.env.TRIP_GENERATION_MODEL || 'gpt-5.5',
-        tools: [{ type: 'web_search', search_context_size: 'low' }],
-        tool_choice: 'auto',
-        include: ['web_search_call.action.sources'],
-        input: [
-          {
-            role: 'system',
-            content: [
-              {
-                type: 'input_text',
-                text:
-                  'Research a family travel or event planning brief. Prefer official venue, resort, restaurant, attraction, and event sources. ' +
-                  'Return only structured JSON. Do not invent availability, exact prices, confirmation numbers, or private contact details.',
-              },
-            ],
-          },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'input_text',
-                text: JSON.stringify({
-                  brief: input,
-                  quality,
-                  maxQueries: Number.isFinite(maxQueries) ? Math.max(1, Math.min(8, maxQueries)) : 4,
-                  instructions:
-                    'Find source-backed planning facts and cite URLs/titles when possible. Focus on official sources and practical planning constraints.',
-                }),
-              },
-            ],
-          },
-        ],
-      }),
-    })
+    const timeoutMs = envTimeoutMs('TRIP_RESEARCH_TIMEOUT_MS', 60_000, 5_000, 120_000)
+    const queryLimit = Number.isFinite(maxQueries) ? Math.max(1, Math.min(8, maxQueries)) : 4
+    const researchPrompt = [
+      'Research this family trip or event brief with web search, then return compact JSON only.',
+      'Prefer official venue, resort, restaurant, attraction, activity provider, and event sources.',
+      `Return no more than ${queryLimit} recommendation candidates plus concise planning insights.`,
+      'Each recommendation must include: name, category, sourceUrl/sourceTitle, addressOrArea, bestFor, whyItFits, bookingStatus, nextStep, logisticsNote, confidence.',
+      'Valid categories: restaurant, activity, entertainment, logistics, fallback.',
+      'Valid bestFor values: breakfast, lunch, dinner, morning, afternoon, evening, rainy-day, flexible.',
+      'Do not invent availability, exact prices, exact distance, exact travel time, confirmation numbers, private phone numbers, or private contact details.',
+      'Use conservative wording such as confirm transportation, ask concierge, likely outside resort, or flexible block.',
+      'JSON shape: {"recommendations":[],"insights":[]}.',
+      JSON.stringify({ brief: input, quality }),
+    ].join('\n\n')
+    try {
+      const response = await fetchWithTimeout('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: model || process.env.TRIP_GENERATION_MODEL || 'gpt-5-mini',
+          store: false,
+          reasoning: { effort: 'low' },
+          tools: [{ type: 'web_search', search_context_size: 'low' }],
+          tool_choice: 'required',
+          include: ['web_search_call.action.sources'],
+          max_output_tokens: 1400,
+          input: researchPrompt,
+        }),
+      }, timeoutMs)
 
-    if (!response.ok) {
-      const errorSummary = summarizeOpenAiErrorBody(await response.text())
+      if (!response.ok) {
+        const errorSummary = summarizeOpenAiErrorBody(await response.text())
+        return {
+          sourceRefs: [],
+          insights: [],
+          notes: [
+            `Live web research request failed with status ${response.status}.`,
+            ...(errorSummary ? [`OpenAI research error: ${errorSummary}`] : []),
+          ],
+          usedSearch: false,
+        }
+      }
+      return parseResearchBundle(await response.json()) ?? {
+        sourceRefs: [],
+        insights: [],
+        notes: ['Live web research response did not include durable source URLs.'],
+        usedSearch: false,
+      }
+    } catch (error) {
+      const timedOut = error instanceof Error && error.name === 'AbortError'
       return {
         sourceRefs: [],
         insights: [],
         notes: [
-          `Live web research request failed with status ${response.status}.`,
-          ...(errorSummary ? [`OpenAI research error: ${errorSummary}`] : []),
+          timedOut
+            ? `Live web research timed out after ${Math.round(timeoutMs / 1000)} seconds; curated/deterministic planning continued.`
+            : 'Live web research failed; curated/deterministic planning continued.',
         ],
         usedSearch: false,
       }
-    }
-    return parseResearchBundle(await response.json()) ?? {
-      sourceRefs: [],
-      insights: [],
-      notes: ['Live web research response did not include durable source URLs.'],
-      usedSearch: false,
     }
   }
 }
 
 function createOpenAiPlanner(apiKey: string | undefined, model: string | undefined): TripAiPlanner | undefined {
+  const plannerEnabled = (process.env.TRIP_AI_PLANNER_ENABLED ?? '0').toLowerCase()
+  if (plannerEnabled !== '1' && plannerEnabled !== 'true') return undefined
   if (!apiKey) return undefined
   return async (input: NormalizedTripGenerationBrief, context: TripGenerationContext) => {
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: model || 'gpt-5.5',
-        input: [
-          {
-            role: 'system',
-            content: [
-              {
-                type: 'input_text',
-                text:
-                  'You generate editable FamilyTrips plans. Return only structured JSON matching the schema. ' +
-                  'Use the fallback trip as the safe base. Improve the plan only with user-provided details and destination-pack facts. ' +
-                  'Do not invent confirmation numbers, private phone numbers, exact prices, guaranteed availability, or unsupported claims. ' +
-                  'Mark uncertain dining, activity, and transportation details in notes as needing confirmation.',
-              },
-            ],
-          },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'input_text',
-                text: JSON.stringify({
-                  brief: input,
-                  destinationPack: context.destinationPack,
-                  research: context.research,
-                  fallbackTrip: context.fallbackTrip,
-                  fallbackSummary: context.fallbackSummary,
-                }),
-              },
-            ],
-          },
-        ],
-        text: {
-          format: {
-            type: 'json_schema',
-            name: 'familytrips_generated_trip',
-            strict: true,
-            schema: tripResponseSchema(),
-          },
+    const timeoutMs = envTimeoutMs('TRIP_PLANNER_TIMEOUT_MS', 60_000, 5_000, 120_000)
+    try {
+      const response = await fetchWithTimeout('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          'content-type': 'application/json',
         },
-      }),
-    })
+        body: JSON.stringify({
+          model: model || 'gpt-5-mini',
+          store: false,
+          reasoning: { effort: 'low' },
+          input: [
+            {
+              role: 'system',
+              content: [
+                {
+                  type: 'input_text',
+                  text:
+                    'You generate editable FamilyTrips plans. Return only structured JSON matching the schema. ' +
+                    'Use the fallback trip as the safe base. Improve the plan only with user-provided details and destination-pack facts. ' +
+                    'Do not invent confirmation numbers, private phone numbers, exact prices, guaranteed availability, or unsupported claims. ' +
+                    'Mark uncertain dining, activity, and transportation details in notes as needing confirmation.',
+                },
+              ],
+            },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'input_text',
+                  text: JSON.stringify({
+                    brief: input,
+                    destinationPack: context.destinationPack,
+                    research: context.research,
+                    fallbackTrip: context.fallbackTrip,
+                    fallbackSummary: context.fallbackSummary,
+                  }),
+                },
+              ],
+            },
+          ],
+          text: {
+            format: {
+              type: 'json_schema',
+              name: 'familytrips_generated_trip',
+              strict: true,
+              schema: tripResponseSchema(),
+            },
+          },
+        }),
+      }, timeoutMs)
 
-    if (!response.ok) return null
-    return parseAiTrip(await response.json())
+      if (!response.ok) return null
+      return parseAiTrip(await response.json())
+    } catch {
+      return null
+    }
   }
 }
 

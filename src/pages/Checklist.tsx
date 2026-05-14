@@ -82,11 +82,14 @@ function AddItemForm({ categories, onSubmit, onCancel }: AddFormProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!canSave || saving) return
+    const nextTitle = title.trim()
+    const nextCategory = (showOther ? categoryOther : category).trim()
+    const nextNotes = notes.trim()
     setSaving(true)
     await onSubmit({
-      title,
-      category: showOther ? categoryOther : category,
-      notes,
+      title: nextTitle,
+      category: nextCategory,
+      notes: nextNotes,
     })
     setSaving(false)
   }
@@ -188,11 +191,14 @@ function EditItemForm({ item, categories, onSubmit, onCancel }: EditFormProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!canSave || saving) return
+    const nextTitle = title.trim()
+    const nextCategory = (showOther ? categoryOther : category).trim()
+    const nextNotes = notes.trim()
     setSaving(true)
     await onSubmit({
-      title,
-      category: showOther ? categoryOther : category,
-      notes,
+      title: nextTitle,
+      category: nextCategory,
+      notes: nextNotes,
     })
     setSaving(false)
   }
@@ -202,43 +208,55 @@ function EditItemForm({ item, categories, onSubmit, onCancel }: EditFormProps) {
       onSubmit={handleSubmit}
       className="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-3 mt-2"
     >
-      <input
-        type="text"
-        required
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
+      <label className="block space-y-1">
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Title</span>
+        <input
+          type="text"
+          required
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </label>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-          <option value="__other__">+ New category…</option>
-        </select>
+        <label className="block space-y-1">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Category</span>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+            <option value="__other__">+ New category…</option>
+          </select>
+        </label>
         {showOther && (
-          <input
-            type="text"
-            value={categoryOther}
-            onChange={(e) => setCategoryOther(e.target.value)}
-            placeholder="New category"
-            className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <label className="block space-y-1">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">New category</span>
+            <input
+              type="text"
+              value={categoryOther}
+              onChange={(e) => setCategoryOther(e.target.value)}
+              placeholder="New category"
+              className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </label>
         )}
       </div>
-      <textarea
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        placeholder="Notes"
-        rows={2}
-        className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
+      <label className="block space-y-1">
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Notes</span>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Notes"
+          rows={2}
+          className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </label>
       <div className="flex items-center gap-2 justify-end">
         <button
           type="button"

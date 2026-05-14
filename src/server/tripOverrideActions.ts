@@ -124,7 +124,11 @@ function parseBody(body: unknown): TripOverrideRequestBody | null {
       assistAction !== 'booking-reminders' &&
       assistAction !== 'packing-checklist' &&
       assistAction !== 'looser-day' &&
-      assistAction !== 'tighter-day'
+      assistAction !== 'tighter-day' &&
+      assistAction !== 'improve-restaurants' &&
+      assistAction !== 'improve-activities' &&
+      assistAction !== 'must-do-mini-plans' &&
+      assistAction !== 'logistics-notes'
     ) {
       return null
     }

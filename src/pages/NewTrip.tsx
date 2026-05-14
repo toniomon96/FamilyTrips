@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   createTripShell,
@@ -9,6 +9,7 @@ import {
 } from '../utils/tripShell'
 import { todayLocalISO } from '../utils/formatters'
 import { findSensitiveContextWarnings } from '../utils/sensitiveContext'
+import { dateRangeError, isIsoDate, isValidDateRange } from '../utils/dateValidation'
 import type { Trip } from '../types/trip'
 import type {
   BriefQuality,
@@ -34,6 +35,7 @@ type ApiFailure = {
 type ApiResult = ApiSuccess | ApiFailure
 type CreateMode = 'smart' | 'blank'
 type WizardStep = 'start' | 'details' | 'questions' | 'review'
+type PendingTripAction = 'questions' | 'preview' | 'create' | 'blankCreate'
 
 type SpeechRecognitionResultLike = {
   [index: number]: { transcript: string }
@@ -94,16 +96,52 @@ const CONTEXT_HINTS = {
   trip: ['Stay/address', 'Flights or drive times', 'Booked plans', 'Must-dos', 'Food preferences', 'Budget/pace', 'Kids or mobility'],
   event: ['Venue/access', 'Guest count', 'Setup timing', 'Food/drinks', 'Must-have moments', 'Helpers', 'Cleanup rules'],
 }
+const REQUEST_TIMEOUT_MS: Record<PendingTripAction, number> = {
+  questions: 25_000,
+  preview: 120_000,
+  create: 90_000,
+  blankCreate: 90_000,
+}
+const PROGRESS_COPY: Record<PendingTripAction, { title: string; steps: string[]; helper: string }> = {
+  questions: {
+    title: 'Checking your brief',
+    steps: ['Validating the essentials', 'Scoring draft strength', 'Finding the best follow-up questions'],
+    helper: 'Nothing is saved here. This should usually take a few seconds.',
+  },
+  preview: {
+    title: 'Building your draft',
+    steps: ['Validating the trip details', 'Checking the share URL', 'Researching sources or using trusted packs', 'Building itinerary, bookings, tasks, packing, and budget', 'Preparing the review screen'],
+    helper: 'Nothing is saved until you accept the preview. If live research is slow, FamilyTrips falls back instead of hanging.',
+  },
+  create: {
+    title: 'Saving your trip',
+    steps: ['Validating the final draft', 'Saving the trip', 'Writing version history', 'Opening the manage workspace'],
+    helper: 'A trip is only created after this save succeeds. If the network times out, use the recovery link below to check the share URL.',
+  },
+  blankCreate: {
+    title: 'Creating the blank trip',
+    steps: ['Building the trip shell', 'Saving the trip', 'Opening the manage workspace'],
+    helper: 'A trip is only created after this save succeeds. If the network times out, use the recovery link below to check the share URL.',
+  },
+}
 
-async function postTrip(payload: Record<string, unknown>): Promise<ApiResult> {
-  const response = await fetch('/api/trips', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-  const body = (await response.json().catch(() => null)) as ApiResult | null
-  if (body) return body
-  return { ok: false, error: response.ok ? 'Empty response.' : 'Trip request failed.' }
+async function postTrip(payload: Record<string, unknown>, signal?: AbortSignal): Promise<ApiResult> {
+  try {
+    const response = await fetch('/api/trips', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal,
+    })
+    const body = (await response.json().catch(() => null)) as ApiResult | null
+    if (body) return body
+    return { ok: false, error: response.ok ? 'Empty response.' : `Trip request failed with status ${response.status}.` }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return { ok: false, error: 'This took longer than expected and timed out. Nothing is saved during questions or preview; if you were saving, check the recovery link below before retrying.' }
+    }
+    return { ok: false, error: 'Network request failed. Check your connection and try again.' }
+  }
 }
 
 function splitLines(value: string): string[] {
@@ -209,6 +247,12 @@ export default function NewTrip() {
   const [listening, setListening] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<ApiFailure['validationErrors']>([])
+  const [startAttempted, setStartAttempted] = useState(false)
+  const [dateTouched, setDateTouched] = useState(false)
+  const [pendingAction, setPendingAction] = useState<PendingTripAction | null>(null)
+  const [pendingStartedAt, setPendingStartedAt] = useState<number | null>(null)
+  const [pendingElapsedSeconds, setPendingElapsedSeconds] = useState(0)
+  const [recoverySlug, setRecoverySlug] = useState<string | null>(null)
 
   const suggestedName = useMemo(() => name.trim() || `${destination.trim() || (planType === 'event' ? 'Family event' : 'Family trip')} ${planType === 'event' ? 'plan' : 'trip'}`, [destination, name, planType])
   const suggestedSlug = useMemo(() => slugifyTripSlug(suggestedName), [suggestedName])
@@ -216,9 +260,41 @@ export default function NewTrip() {
     () => slugifyTripSlug(slugWasEdited ? customSlug : suggestedSlug),
     [customSlug, slugWasEdited, suggestedSlug],
   )
-  const canStart = pin.trim().length > 0 && destination.trim().length > 0 && startDate <= endDate && isValidTripSlug(slug) && !saving
+  const pinError = pin.trim().length > 0 ? null : 'Trip edit PIN is required.'
+  const destinationError = destination.trim().length > 0
+    ? null
+    : `${planType === 'event' ? 'Venue or gathering location' : 'Destination, stay, resort, or city'} is required.`
+  const datesError = dateRangeError(startDate, endDate)
+  const datesOk = isValidDateRange(startDate, endDate)
+  const slugError = isValidTripSlug(slug) ? null : 'Share URL must use letters, numbers, and hyphens only.'
+  const startFormErrors = [pinError, destinationError, datesError, slugError].filter(Boolean)
+  const canStart = startFormErrors.length === 0 && datesOk && !saving
+  const showStartErrors = startAttempted || step !== 'start'
+  const showDateError = dateTouched || showStartErrors
   const isEvent = planType === 'event'
   const sensitiveWarnings = useMemo(() => findSensitiveContextWarnings(rawContext), [rawContext])
+  const progressCopy = pendingAction ? PROGRESS_COPY[pendingAction] : null
+  const progressStepIndex = progressCopy ? Math.min(progressCopy.steps.length - 1, Math.floor(pendingElapsedSeconds / 4)) : 0
+  const showSlowHint = pendingElapsedSeconds >= 12
+
+  useEffect(() => {
+    if (!pendingAction || !pendingStartedAt) return undefined
+    const updateElapsed = () => setPendingElapsedSeconds(Math.floor((Date.now() - pendingStartedAt) / 1000))
+    updateElapsed()
+    const interval = window.setInterval(updateElapsed, 1000)
+    return () => window.clearInterval(interval)
+  }, [pendingAction, pendingStartedAt])
+
+  function handleStartDateChange(value: string) {
+    setDateTouched(true)
+    setStartDate(value)
+    if (isIsoDate(value) && isIsoDate(endDate) && value > endDate) setEndDate(value)
+  }
+
+  function handleEndDateChange(value: string) {
+    setDateTouched(true)
+    setEndDate(value)
+  }
 
   function buildBrief(extraAnswers = answers) {
     const followUpAnswers = Object.values(extraAnswers).map((answer) => answer.trim()).filter(Boolean)
@@ -258,12 +334,28 @@ export default function NewTrip() {
     }
   }
 
-  async function handleQuestions(nextAnswers = answers) {
+  async function runTripRequest(kind: PendingTripAction, request: (signal: AbortSignal) => Promise<ApiResult>): Promise<ApiResult> {
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS[kind])
     setSaving(true)
+    setPendingAction(kind)
+    setPendingStartedAt(Date.now())
+    setPendingElapsedSeconds(0)
+    setRecoverySlug(kind === 'create' || kind === 'blankCreate' ? slug : null)
     setMessage(null)
     setValidationErrors([])
-    const result = await postTrip({ action: 'briefQuestions', pin, brief: buildBrief(nextAnswers) })
-    setSaving(false)
+    try {
+      return await request(controller.signal)
+    } finally {
+      window.clearTimeout(timeout)
+      setSaving(false)
+      setPendingAction(null)
+      setPendingStartedAt(null)
+    }
+  }
+
+  async function handleQuestions(nextAnswers = answers) {
+    const result = await runTripRequest('questions', (signal) => postTrip({ action: 'briefQuestions', pin, brief: buildBrief(nextAnswers) }, signal))
     if (!result.ok) {
       setMessage(result.error)
       setValidationErrors(result.validationErrors ?? [])
@@ -278,11 +370,7 @@ export default function NewTrip() {
   }
 
   async function handlePreview(nextAnswers = answers) {
-    setSaving(true)
-    setMessage(null)
-    setValidationErrors([])
-    const result = await postTrip({ action: 'preview', pin, brief: buildBrief(nextAnswers) })
-    setSaving(false)
+    const result = await runTripRequest('preview', (signal) => postTrip({ action: 'preview', pin, brief: buildBrief(nextAnswers) }, signal))
     if (!result.ok) {
       setMessage(result.error)
       setValidationErrors(result.validationErrors ?? [])
@@ -296,10 +384,7 @@ export default function NewTrip() {
   }
 
   async function handleBlankCreate() {
-    setSaving(true)
-    setMessage(null)
-    setValidationErrors([])
-    const result = await postTrip({
+    const result = await runTripRequest('blankCreate', (signal) => postTrip({
       action: 'create',
       pin,
       createdBy,
@@ -314,8 +399,7 @@ export default function NewTrip() {
         stayName: isEvent ? venueName || destination : stayName || destination,
         createdBy,
       }),
-    })
-    setSaving(false)
+    }, signal))
     if (!result.ok) {
       setMessage(result.error)
       setValidationErrors(result.validationErrors ?? [])
@@ -330,11 +414,7 @@ export default function NewTrip() {
 
   async function handleAcceptPreview() {
     if (!previewTrip) return
-    setSaving(true)
-    setMessage(null)
-    setValidationErrors([])
-    const result = await postTrip({ action: 'create', pin, createdBy, trip: previewTrip })
-    setSaving(false)
+    const result = await runTripRequest('create', (signal) => postTrip({ action: 'create', pin, createdBy, trip: previewTrip }, signal))
     if (!result.ok) {
       setMessage(result.error)
       setValidationErrors(result.validationErrors ?? [])
@@ -375,7 +455,12 @@ export default function NewTrip() {
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!canStart) return
+    setStartAttempted(true)
+    if (!canStart) {
+      setMessage('Fix the highlighted fields before continuing.')
+      return
+    }
+    setMessage(null)
     if (mode === 'blank') {
       void handleBlankCreate()
       return
@@ -398,11 +483,14 @@ export default function NewTrip() {
   function switchMode(nextMode: CreateMode) {
     setMode(nextMode)
     setStep('start')
+    setStartAttempted(false)
+    setDateTouched(false)
     setQuality(null)
     setPreviewTrip(null)
     setGenerationSummary(null)
     setMessage(null)
     setValidationErrors([])
+    setRecoverySlug(null)
   }
 
   const primaryLabel =
@@ -466,16 +554,26 @@ export default function NewTrip() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="block space-y-1 sm:col-span-2">
                 <span className="text-sm font-medium text-slate-700">Trip edit PIN</span>
-                <input type="password" autoComplete="current-password" required value={pin} onChange={(event) => setPin(event.target.value)} className={FIELD_CLASS} />
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={pin}
+                  onChange={(event) => setPin(event.target.value)}
+                  aria-invalid={showStartErrors && Boolean(pinError)}
+                  aria-describedby={showStartErrors && pinError ? 'trip-pin-error' : undefined}
+                  className={FIELD_CLASS}
+                />
+                {showStartErrors && pinError && <p id="trip-pin-error" className="text-xs font-medium text-red-700">{pinError}</p>}
                 <p className="text-xs leading-5 text-slate-500">
                   Toni shares this with trusted family and friends so FamilyTrips can save and edit the plan.
                 </p>
               </label>
               <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1 sm:col-span-2">
-                <button type="button" onClick={() => setPlanType('trip')} className={`rounded-xl px-3 py-2 text-sm font-semibold ${planType === 'trip' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-600'}`}>
+                <button type="button" aria-pressed={planType === 'trip'} onClick={() => setPlanType('trip')} className={`rounded-xl px-3 py-2 text-sm font-semibold ${planType === 'trip' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-600'}`}>
                   Trip
                 </button>
-                <button type="button" onClick={() => setPlanType('event')} className={`rounded-xl px-3 py-2 text-sm font-semibold ${planType === 'event' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-600'}`}>
+                <button type="button" aria-pressed={planType === 'event'} onClick={() => setPlanType('event')} className={`rounded-xl px-3 py-2 text-sm font-semibold ${planType === 'event' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-600'}`}>
                   Event
                 </button>
               </div>
@@ -489,16 +587,43 @@ export default function NewTrip() {
               )}
               <label className="block space-y-1 sm:col-span-2">
                 <span className="text-sm font-medium text-slate-700">{isEvent ? 'Venue, address, or gathering location' : 'Destination, stay, resort, or city'}</span>
-                <input required value={destination} onChange={(event) => setDestination(event.target.value)} placeholder={isEvent ? 'Backyard, park, stadium, house, venue...' : 'Le Blanc Los Cabos, Charleston, lake house...'} className={FIELD_CLASS} />
+                <input
+                  required
+                  value={destination}
+                  onChange={(event) => setDestination(event.target.value)}
+                  placeholder={isEvent ? 'Backyard, park, stadium, house, venue...' : 'Le Blanc Los Cabos, Charleston, lake house...'}
+                  aria-invalid={showStartErrors && Boolean(destinationError)}
+                  aria-describedby={showStartErrors && destinationError ? 'trip-destination-error' : undefined}
+                  className={FIELD_CLASS}
+                />
+                {showStartErrors && destinationError && <p id="trip-destination-error" className="text-xs font-medium text-red-700">{destinationError}</p>}
               </label>
               <label className="block space-y-1">
                 <span className="text-sm font-medium text-slate-700">Start date</span>
-                <input type="date" required value={startDate} onChange={(event) => setStartDate(event.target.value)} className={FIELD_CLASS} />
+                <input
+                  type="date"
+                  required
+                  value={startDate}
+                  onChange={(event) => handleStartDateChange(event.target.value)}
+                  aria-invalid={showDateError && Boolean(datesError)}
+                  aria-describedby={showDateError && datesError ? 'trip-date-error' : undefined}
+                  className={FIELD_CLASS}
+                />
               </label>
               <label className="block space-y-1">
                 <span className="text-sm font-medium text-slate-700">End date</span>
-                <input type="date" required value={endDate} onChange={(event) => setEndDate(event.target.value)} className={FIELD_CLASS} />
+                <input
+                  type="date"
+                  required
+                  min={startDate || undefined}
+                  value={endDate}
+                  onChange={(event) => handleEndDateChange(event.target.value)}
+                  aria-invalid={showDateError && Boolean(datesError)}
+                  aria-describedby={showDateError && datesError ? 'trip-date-error' : undefined}
+                  className={FIELD_CLASS}
+                />
               </label>
+              {showDateError && datesError && <p id="trip-date-error" className="text-xs font-medium text-red-700 sm:col-span-2">{datesError}</p>}
               <label className="block space-y-1 sm:col-span-2">
                 <span className="text-sm font-medium text-slate-700">Tell us everything you already know</span>
                 <textarea
@@ -557,7 +682,15 @@ export default function NewTrip() {
                 </label>
                 <label className="block space-y-1">
                   <span className="text-sm font-medium text-slate-700">Share URL</span>
-                  <input value={slugWasEdited ? customSlug : suggestedSlug} onChange={(event) => { setSlugWasEdited(true); setCustomSlug(slugifyTripSlug(event.target.value)) }} placeholder={suggestedSlug} className={FIELD_CLASS} />
+                  <input
+                    value={slugWasEdited ? customSlug : suggestedSlug}
+                    onChange={(event) => { setSlugWasEdited(true); setCustomSlug(slugifyTripSlug(event.target.value)) }}
+                    placeholder={suggestedSlug}
+                    aria-invalid={showStartErrors && Boolean(slugError)}
+                    aria-describedby={showStartErrors && slugError ? 'trip-slug-error' : undefined}
+                    className={FIELD_CLASS}
+                  />
+                  {showStartErrors && slugError && <p id="trip-slug-error" className="text-xs font-medium text-red-700">{slugError}</p>}
                 </label>
                 <label className="block space-y-1">
                   <span className="text-sm font-medium text-slate-700">{isEvent ? 'Guests or groups' : 'Travelers'}</span>
@@ -642,7 +775,13 @@ export default function NewTrip() {
                   {VIBE_OPTIONS.map((option) => {
                     const active = vibe.includes(option)
                     return (
-                      <button key={option} type="button" onClick={() => setVibe((current) => toggleValue(current, option))} className={`rounded-full border px-3 py-1.5 text-sm font-medium ${active ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-300 bg-white text-slate-700'}`}>
+                      <button
+                        key={option}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => setVibe((current) => toggleValue(current, option))}
+                        className={`rounded-full border px-3 py-1.5 text-sm font-medium ${active ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-300 bg-white text-slate-700'}`}
+                      >
                         {option}
                       </button>
                     )
@@ -711,6 +850,56 @@ export default function NewTrip() {
                   <p className="rounded-2xl bg-slate-50 p-3 text-sm"><span className="block text-xs text-slate-500">Tasks</span>{previewTrip.kind === 'event' ? previewTrip.eventTasks?.length ?? 0 : previewTrip.checklist.length}</p>
                   <p className="rounded-2xl bg-slate-50 p-3 text-sm"><span className="block text-xs text-slate-500">Sources</span>{previewTrip.planner?.sourceRefs.length ?? 0}</p>
                 </div>
+                {previewTrip.planner?.brief && (
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="text-sm font-semibold text-slate-800">Based on this brief</p>
+                    <div className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                      <p className="rounded-2xl bg-slate-50 p-3"><span className="block text-xs text-slate-500">Location anchor</span>{previewTrip.planner.brief.stayAddress || previewTrip.planner.brief.venueAddress || previewTrip.planner.brief.locationText || previewTrip.planner.brief.destination}</p>
+                      <p className="rounded-2xl bg-slate-50 p-3"><span className="block text-xs text-slate-500">Pace</span>{previewTrip.planner.brief.pace?.replace(/-/g, ' ') || 'Not specified'}</p>
+                    </div>
+                    {previewTrip.planner.locationLimitations?.length ? (
+                      <p className="mt-2 rounded-2xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+                        {previewTrip.planner.locationLimitations[1]}
+                      </p>
+                    ) : null}
+                  </div>
+                )}
+                {(previewTrip.planner?.miniPlans?.length ?? 0) > 0 && (
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="mb-2 text-sm font-semibold text-slate-800">Must-do mini-plans</p>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {previewTrip.planner?.miniPlans?.slice(0, 6).map((plan) => (
+                        <article key={plan.id} className="rounded-2xl bg-slate-50 p-3 text-sm">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-slate-950">{plan.title}</span>
+                            {plan.status && <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold capitalize text-slate-600">{plan.status.replace(/-/g, ' ')}</span>}
+                          </div>
+                          <p className="mt-1 text-xs text-slate-500">{[plan.recommendedDate, plan.recommendedTimeWindow].filter(Boolean).join(' · ') || 'Flexible block'}</p>
+                          {plan.nextStep && <p className="mt-1 text-xs leading-5 text-slate-600">{plan.nextStep}</p>}
+                          {plan.logisticsNote && <p className="mt-1 text-xs leading-5 text-slate-600">{plan.logisticsNote}</p>}
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {(previewTrip.planner?.recommendations?.length ?? 0) > 0 && (
+                  <div className="rounded-2xl border border-slate-200 p-3">
+                    <p className="mb-2 text-sm font-semibold text-slate-800">Recommended restaurants, activities, and logistics</p>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {previewTrip.planner?.recommendations?.slice(0, 6).map((candidate) => (
+                        <article key={candidate.id} className="rounded-2xl bg-slate-50 p-3 text-sm">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-slate-950">{candidate.name}</span>
+                            <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold capitalize text-slate-600">{candidate.category}</span>
+                          </div>
+                          {candidate.addressOrArea && <p className="mt-1 text-xs text-slate-500">{candidate.addressOrArea}</p>}
+                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">{candidate.whyItFits}</p>
+                          {candidate.nextStep && <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600"><span className="font-semibold">Next: </span>{candidate.nextStep}</p>}
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-3">
                   {previewTrip.itinerary.slice(0, 4).map((day) => (
                     <article key={day.date} className="rounded-2xl border border-slate-200 p-3">
@@ -772,8 +961,67 @@ export default function NewTrip() {
             </section>
           )}
 
-          {startDate > endDate && <p className="text-sm text-red-700">End date must be the same day or after the start date.</p>}
+          {progressCopy && (
+            <section
+              role="status"
+              aria-live="polite"
+              className="rounded-3xl border border-blue-200 bg-blue-50 p-4 shadow-sm"
+            >
+              <div className="flex items-start gap-3">
+                <div className="mt-1 h-3 w-3 flex-shrink-0 animate-pulse rounded-full bg-blue-600" aria-hidden />
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-blue-950">{progressCopy.title}</p>
+                      <p className="mt-1 text-sm leading-6 text-blue-900">{progressCopy.helper}</p>
+                    </div>
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-blue-800">
+                      {pendingElapsedSeconds}s
+                    </span>
+                  </div>
+                  <ol className="grid gap-2 sm:grid-cols-2">
+                    {progressCopy.steps.map((item, index) => {
+                      const active = index === progressStepIndex
+                      const done = index < progressStepIndex
+                      return (
+                        <li
+                          key={item}
+                          className={`rounded-2xl px-3 py-2 text-xs font-semibold ${
+                            active
+                              ? 'bg-white text-blue-900 ring-1 ring-blue-200'
+                              : done
+                                ? 'bg-emerald-50 text-emerald-800'
+                                : 'bg-blue-100/70 text-blue-700'
+                          }`}
+                        >
+                          {done ? 'Done: ' : active ? 'Now: ' : ''}
+                          {item}
+                        </li>
+                      )
+                    })}
+                  </ol>
+                  {showSlowHint && (
+                    <p className="rounded-2xl bg-white px-3 py-2 text-sm leading-6 text-blue-900">
+                      Still working. Live research can be slower than the normal draft path, but this screen will either move forward or show a clear error. Please do not refresh while it is running.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
+
           {message && <p className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-800">{message}</p>}
+          {recoverySlug && !saving && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <p className="font-semibold">Need to check whether it saved?</p>
+              <p className="mt-1 leading-6">
+                Try opening the planned share URL. If it exists, the save finished even if your browser lost the response.
+              </p>
+              <Link to={`/${recoverySlug}/manage`} className="mt-2 inline-flex rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 ring-1 ring-amber-200">
+                Check {recoverySlug}
+              </Link>
+            </div>
+          )}
           {validationErrors && validationErrors.length > 0 && (
             <ul className="rounded-2xl bg-red-50 border border-red-100 p-3 text-sm text-red-800 space-y-1">
               {validationErrors.map((error, index) => (

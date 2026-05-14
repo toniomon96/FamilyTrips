@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Section from '../components/Section'
 import { getTrip } from '../data/trips'
@@ -17,11 +17,14 @@ import type {
   Person,
   PlanItemStatus,
   PlanKind,
+  PlannerMiniPlan,
+  PlannerRecommendationCandidate,
   PlannerSourceRef,
   Stay,
   Trip,
 } from '../types/trip'
 import { formatTimeAgo } from '../utils/formatters'
+import { dateRangeError, isDateWithinRange, isIsoDate, isValidDateRange } from '../utils/dateValidation'
 import {
   cloneTrip,
   editableFieldsFromTrip,
@@ -33,7 +36,7 @@ import {
 import type { SmartAssistAction, SmartAssistPreview } from '../utils/tripAssist'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
-type FieldKind = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'checkbox'
+type FieldKind = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'checkbox' | 'url' | 'tel'
 type ValidationMessage = { path: string; message: string }
 
 type SelectOption = {
@@ -48,6 +51,9 @@ type FieldConfig<T extends { id: string }> = {
   options?: SelectOption[]
   placeholder?: string
   required?: boolean
+  min?: string | number
+  max?: string | number
+  step?: string | number
 }
 
 type OwnerApiSuccess = {
@@ -144,9 +150,18 @@ function setRecordValue<T extends { id: string }>(
 
 function coerceInputValue(kind: FieldKind, raw: string, checked: boolean, required?: boolean): unknown {
   if (kind === 'checkbox') return checked
-  if (kind === 'number') return raw.trim() === '' ? 0 : Number(raw)
+  if (kind === 'number') {
+    if (raw.trim() === '') return required ? 0 : undefined
+    const parsed = Number(raw)
+    return Number.isFinite(parsed) ? parsed : required ? 0 : undefined
+  }
   if (!required && raw.trim() === '') return undefined
   return raw
+}
+
+function parseFiniteNumber(value: string, fallback: number): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
 }
 
 function TextInput({
@@ -156,25 +171,43 @@ function TextInput({
   type = 'text',
   placeholder,
   required,
+  min,
+  max,
+  step,
+  error,
 }: {
   label: string
   value: string | number | undefined
   onChange: (value: string) => void
-  type?: 'text' | 'date' | 'number'
+  type?: 'text' | 'date' | 'number' | 'url' | 'tel'
   placeholder?: string
   required?: boolean
+  min?: string | number
+  max?: string | number
+  step?: string | number
+  error?: string | null
 }) {
+  const generatedId = useId()
+  const inputId = `input-${generatedId}`
+  const errorId = `${inputId}-error`
   return (
     <label className="block space-y-1">
       <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
       <input
+        id={inputId}
         type={type}
         required={required}
+        min={min}
+        max={max}
+        step={step}
         value={value ?? ''}
         placeholder={placeholder}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? errorId : undefined}
         onChange={(event) => onChange(event.target.value)}
         className={FIELD_CLASS}
       />
+      {error && <span id={errorId} className="text-xs font-medium text-red-700">{error}</span>}
     </label>
   )
 }
@@ -329,10 +362,13 @@ function ArrayField<T extends { id: string }>({
   return (
     <TextInput
       label={field.label}
-      type={kind === 'date' ? 'date' : kind === 'number' ? 'number' : 'text'}
+      type={kind === 'date' ? 'date' : kind === 'number' ? 'number' : kind === 'url' ? 'url' : kind === 'tel' ? 'tel' : 'text'}
       value={fieldValue(record[field.key])}
       placeholder={field.placeholder}
       required={field.required}
+      min={field.min}
+      max={field.max}
+      step={field.step}
       onChange={(value) =>
         onChange(setRecordValue(item, field.key, coerceInputValue(kind, value, false, field.required)))
       }
@@ -433,10 +469,12 @@ function ObjectArrayEditor<T extends { id: string }>({
 function ItineraryEditor({
   days,
   startDate,
+  endDate,
   onChange,
 }: {
   days: Day[]
   startDate: string
+  endDate: string
   onChange: (days: Day[]) => void
 }) {
   function updateDay(index: number, day: Day) {
@@ -493,7 +531,15 @@ function ItineraryEditor({
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <TextInput label="Date" type="date" value={day.date} onChange={(value) => updateDay(dayIndex, { ...day, date: value })} />
+              <TextInput
+                label="Date"
+                type="date"
+                min={isIsoDate(startDate) ? startDate : undefined}
+                max={isIsoDate(endDate) ? endDate : undefined}
+                value={day.date}
+                error={isValidDateRange(startDate, endDate) && !isDateWithinRange(day.date, startDate, endDate) ? 'Day date must stay within the trip date range.' : null}
+                onChange={(value) => updateDay(dayIndex, { ...day, date: value })}
+              />
               <TextInput label="Title" value={day.title} onChange={(value) => updateDay(dayIndex, { ...day, title: value || undefined })} />
             </div>
             <div className="space-y-2">
@@ -542,7 +588,7 @@ function ItineraryEditor({
                       <TextInput label="Time" value={item.time} onChange={(value) => updateDay(dayIndex, updateItem(day, itemIndex, { ...item, time: value || undefined }))} />
                       <TextInput label="Title" value={item.title} required onChange={(value) => updateDay(dayIndex, updateItem(day, itemIndex, { ...item, title: value }))} />
                       <TextInput label="Address" value={item.address} onChange={(value) => updateDay(dayIndex, updateItem(day, itemIndex, { ...item, address: value || undefined }))} />
-                      <TextInput label="Link" value={item.link} onChange={(value) => updateDay(dayIndex, updateItem(day, itemIndex, { ...item, link: value || undefined }))} />
+                      <TextInput label="Link" type="url" value={item.link} onChange={(value) => updateDay(dayIndex, updateItem(day, itemIndex, { ...item, link: value || undefined }))} />
                     </div>
                     <TextArea label="Notes" value={item.notes} onChange={(value) => updateDay(dayIndex, updateItem(day, itemIndex, { ...item, notes: value || undefined }))} />
                   </li>
@@ -594,6 +640,11 @@ type MiniPlan = {
   notes?: string
   link?: string
   sourceIds?: string[]
+  recommendedDate?: string
+  recommendedTimeWindow?: string
+  logisticsNote?: string
+  packingImplication?: string
+  confidence?: string
 }
 
 const COMMAND_PANEL_LABELS: Record<CommandPanel, { trip: string; event: string }> = {
@@ -720,6 +771,11 @@ function getSources(sourceIds: string[] | undefined, sourceRefs: PlannerSourceRe
   return sourceRefs.filter((source) => ids.has(source.id))
 }
 
+function joinNotes(...parts: (string | undefined)[]): string | undefined {
+  const note = parts.filter(Boolean).join(' ')
+  return note || undefined
+}
+
 function MiniPlanCard({ plan, sourceRefs }: { plan: MiniPlan; sourceRefs: PlannerSourceRef[] }) {
   const sources = getSources(plan.sourceIds, sourceRefs)
   return (
@@ -732,7 +788,18 @@ function MiniPlanCard({ plan, sourceRefs }: { plan: MiniPlan; sourceRefs: Planne
         <StatusBadge status={plan.status} />
       </div>
       {plan.why && <p className="mt-3 text-sm leading-6 text-slate-700">{plan.why}</p>}
+      {(plan.recommendedDate || plan.recommendedTimeWindow || plan.confidence) && (
+        <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
+          {plan.recommendedDate && <span className="rounded-full bg-slate-50 px-2 py-1">Date: {plan.recommendedDate}</span>}
+          {plan.recommendedTimeWindow && <span className="rounded-full bg-slate-50 px-2 py-1">Window: {plan.recommendedTimeWindow}</span>}
+          {plan.confidence && <span className="rounded-full bg-slate-50 px-2 py-1">Confidence: {plan.confidence}</span>}
+        </div>
+      )}
       {plan.notes && <p className="mt-2 text-sm leading-6 text-slate-600">{plan.notes}</p>}
+      {plan.logisticsNote && <p className="mt-2 text-sm leading-6 text-slate-600">{plan.logisticsNote}</p>}
+      {plan.packingImplication && (
+        <p className="mt-2 text-sm leading-6 text-slate-600"><span className="font-semibold text-slate-800">Packing: </span>{plan.packingImplication}</p>
+      )}
       {plan.nextStep && (
         <p className="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-sm text-slate-700">
           <span className="font-semibold text-slate-950">Next step: </span>
@@ -757,6 +824,33 @@ function MiniPlanCard({ plan, sourceRefs }: { plan: MiniPlan; sourceRefs: Planne
   )
 }
 
+function RecommendationCard({ recommendation, sourceRefs }: { recommendation: PlannerRecommendationCandidate; sourceRefs: PlannerSourceRef[] }) {
+  const sources = getSources(recommendation.sourceIds, sourceRefs)
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{recommendation.category}</p>
+          <h3 className="mt-1 text-sm font-bold text-slate-950">{recommendation.name}</h3>
+        </div>
+        <StatusBadge status={recommendation.bookingStatus ?? recommendation.status} />
+      </div>
+      {recommendation.addressOrArea && <p className="mt-1 text-xs text-slate-500">{recommendation.addressOrArea}</p>}
+      <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-700">{recommendation.whyItFits}</p>
+      {recommendation.nextStep && <p className="mt-2 line-clamp-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700"><span className="font-semibold">Next: </span>{recommendation.nextStep}</p>}
+      <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+        {recommendation.bestFor.slice(0, 2).map((fit) => <span key={fit} className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">{fit}</span>)}
+        <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">{recommendation.confidence} confidence</span>
+        {sources.map((source) => source.url ? (
+          <a key={source.id} href={source.url} target="_blank" rel="noreferrer" className="rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-blue-800">
+            Source
+          </a>
+        ) : null)}
+      </div>
+    </article>
+  )
+}
+
 function buildMiniPlans(trip: Trip): MiniPlan[] {
   const plans = new Map<string, MiniPlan>()
   const add = (plan: MiniPlan) => {
@@ -770,6 +864,33 @@ function buildMiniPlans(trip: Trip): MiniPlan[] {
       notes: plan.notes ?? current?.notes,
       sourceIds: plan.sourceIds ?? current?.sourceIds,
       link: plan.link ?? current?.link,
+      recommendedDate: plan.recommendedDate ?? current?.recommendedDate,
+      recommendedTimeWindow: plan.recommendedTimeWindow ?? current?.recommendedTimeWindow,
+      logisticsNote: plan.logisticsNote ?? current?.logisticsNote,
+      packingImplication: plan.packingImplication ?? current?.packingImplication,
+      confidence: plan.confidence ?? current?.confidence,
+    })
+  }
+
+  for (const miniPlan of trip.planner?.miniPlans ?? []) {
+    const typedMiniPlan = miniPlan as PlannerMiniPlan
+    add({
+      id: typedMiniPlan.id,
+      title: typedMiniPlan.title,
+      category: typedMiniPlan.type ?? 'Must-do',
+      status: typedMiniPlan.status,
+      why: typedMiniPlan.why,
+      nextStep: typedMiniPlan.nextStep,
+      notes: joinNotes(
+        typedMiniPlan.recommendedDate ? `Suggested date: ${typedMiniPlan.recommendedDate}.` : undefined,
+        typedMiniPlan.recommendedTimeWindow ? `Window: ${typedMiniPlan.recommendedTimeWindow}.` : undefined,
+      ),
+      sourceIds: typedMiniPlan.sourceIds,
+      recommendedDate: typedMiniPlan.recommendedDate,
+      recommendedTimeWindow: typedMiniPlan.recommendedTimeWindow,
+      logisticsNote: typedMiniPlan.logisticsNote,
+      packingImplication: typedMiniPlan.packingImplication,
+      confidence: typedMiniPlan.confidence,
     })
   }
 
@@ -836,6 +957,8 @@ function TripCommandPanel({
   const isEvent = trip.kind === 'event'
   const planner = trip.planner
   const sourceRefs = trip.planner?.sourceRefs ?? []
+  const recommendations = trip.planner?.recommendations ?? []
+  const savedBrief = trip.planner?.brief
   const miniPlans = buildMiniPlans(trip)
   const actionItems = [
     ...trip.bookings.map((item) => ({
@@ -902,6 +1025,37 @@ function TripCommandPanel({
               </span>
             </div>
           </div>
+        )}
+
+        {savedBrief && (
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Based on this brief</p>
+            <h2 className="mt-1 text-xl font-bold text-slate-950">{savedBrief.stayName || savedBrief.venueName || savedBrief.destination}</h2>
+            <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+              <p className="rounded-2xl bg-slate-50 p-3"><span className="block text-xs font-semibold text-slate-500">Location anchor</span>{savedBrief.stayAddress || savedBrief.venueAddress || savedBrief.locationText || savedBrief.destination}</p>
+              <p className="rounded-2xl bg-slate-50 p-3"><span className="block text-xs font-semibold text-slate-500">Pace</span>{savedBrief.pace?.replace(/-/g, ' ') || 'Not specified'}</p>
+              <p className="rounded-2xl bg-slate-50 p-3"><span className="block text-xs font-semibold text-slate-500">Travelers</span>{savedBrief.travelerNames?.join(', ') || savedBrief.travelers || savedBrief.guestCount || 'Not specified'}</p>
+              <p className="rounded-2xl bg-slate-50 p-3"><span className="block text-xs font-semibold text-slate-500">Must-dos</span>{savedBrief.mustDos?.length ?? 0}</p>
+            </div>
+            {savedBrief.rawContext && <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{savedBrief.rawContext}</p>}
+          </section>
+        )}
+
+        {recommendations.length > 0 && (
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Recommended places</p>
+                <h2 className="mt-1 text-xl font-bold text-slate-950">Restaurants, activities, and logistics surfaced from the brief.</h2>
+              </div>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Top {Math.min(4, recommendations.length)} of {recommendations.length}</span>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+              {recommendations.slice(0, 4).map((recommendation) => (
+                <RecommendationCard key={recommendation.id} recommendation={recommendation} sourceRefs={sourceRefs} />
+              ))}
+            </div>
+          </section>
         )}
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
@@ -1142,6 +1296,14 @@ function TripCommandPanel({
           </ul>
         </div>
       ) : null}
+      {planner?.locationLimitations?.length ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950 shadow-sm">
+          <h3 className="font-bold">Location-awareness limits</h3>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6">
+            {planner.locationLimitations.map((note) => <li key={note}>{note}</li>)}
+          </ul>
+        </div>
+      ) : null}
     </section>
   )
 }
@@ -1190,11 +1352,22 @@ export default function ManageTrip() {
   )
 
   const allErrors = serverErrors.length ? serverErrors : validationErrors
+  const dateIssue = dateRangeError(draft.startDate, draft.endDate)
 
   function patchDraft(patch: Partial<Trip>) {
     setDirty(true)
     setServerErrors([])
     setDraft((prev) => ({ ...prev, ...patch, slug: prev.slug }))
+  }
+
+  function patchStartDate(value: string) {
+    const patch: Partial<Trip> = { startDate: value }
+    if (isIsoDate(value) && isIsoDate(draft.endDate) && value > draft.endDate) patch.endDate = value
+    patchDraft(patch)
+  }
+
+  function patchEndDate(value: string) {
+    patchDraft({ endDate: value })
   }
 
   function patchStay(patch: Partial<Stay>) {
@@ -1481,6 +1654,10 @@ export default function ManageTrip() {
                 { value: 'improve-itinerary', label: 'Improve itinerary' },
                 { value: 'booking-reminders', label: 'Create booking reminders' },
                 { value: 'packing-checklist', label: 'Build checklist / packing' },
+                { value: 'improve-restaurants', label: 'Improve restaurants near stay' },
+                { value: 'improve-activities', label: 'Improve activities near stay' },
+                { value: 'must-do-mini-plans', label: 'Turn must-dos into mini-plans' },
+                { value: 'logistics-notes', label: 'Add logistics notes' },
                 { value: 'looser-day', label: 'Make the plan looser' },
                 { value: 'tighter-day', label: 'Tighten open days' },
               ]}
@@ -1537,12 +1714,12 @@ export default function ManageTrip() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <TextInput label="Trip name" value={draft.name} required onChange={(value) => patchDraft({ name: value })} />
           <TextInput label="Location" value={draft.location} required onChange={(value) => patchDraft({ location: value })} />
-          <TextInput label="Start date" type="date" value={draft.startDate} required onChange={(value) => patchDraft({ startDate: value })} />
-          <TextInput label="End date" type="date" value={draft.endDate} required onChange={(value) => patchDraft({ endDate: value })} />
+          <TextInput label="Start date" type="date" value={draft.startDate} required error={dateIssue} onChange={patchStartDate} />
+          <TextInput label="End date" type="date" value={draft.endDate} required min={isIsoDate(draft.startDate) ? draft.startDate : undefined} error={dateIssue} onChange={patchEndDate} />
           <SelectInput label="Kind" value={draft.kind ?? ''} options={TRIP_KIND_OPTIONS} onChange={(value) => patchDraft({ kind: (value || undefined) as PlanKind | undefined })} />
           <SelectInput label="Visibility" value={draft.visibility ?? ''} options={VISIBILITY_OPTIONS} onChange={(value) => patchDraft({ visibility: (value || undefined) as Trip['visibility'] })} />
           <TextInput label="Currency" value={draft.currency} required onChange={(value) => patchDraft({ currency: value || '$' })} />
-          <TextInput label="Hero image URL/path" value={draft.heroImage} onChange={(value) => patchDraft({ heroImage: value || undefined })} />
+          <TextInput label="Hero image URL/path" type="url" value={draft.heroImage} onChange={(value) => patchDraft({ heroImage: value || undefined })} />
         </div>
         <TextArea label="Tagline" value={draft.tagline} onChange={(value) => patchDraft({ tagline: value || undefined })} />
       </Section>
@@ -1555,10 +1732,10 @@ export default function ManageTrip() {
           <TextInput label={draft.kind === 'event' ? 'Ends' : 'Check-out'} value={draft.stay.checkOut} required onChange={(value) => patchStay({ checkOut: value })} />
           <TextInput label="Wi-Fi name" value={draft.stay.wifiSsid} onChange={(value) => patchStay({ wifiSsid: value || undefined })} />
           <TextInput label="Wi-Fi password" value={draft.stay.wifiPassword} onChange={(value) => patchStay({ wifiPassword: value || undefined })} />
-          <TextInput label="Booking link" value={draft.stay.bookingLink} onChange={(value) => patchStay({ bookingLink: value || undefined })} />
+          <TextInput label="Booking link" type="url" value={draft.stay.bookingLink} onChange={(value) => patchStay({ bookingLink: value || undefined })} />
           <TextInput label="Confirmation" value={draft.stay.confirmation} onChange={(value) => patchStay({ confirmation: value || undefined })} />
           <TextInput label="Host name" value={draft.stay.hostName} onChange={(value) => patchStay({ hostName: value || undefined })} />
-          <TextInput label="Host phone" value={draft.stay.hostPhone} onChange={(value) => patchStay({ hostPhone: value || undefined })} />
+          <TextInput label="Host phone" type="tel" value={draft.stay.hostPhone} onChange={(value) => patchStay({ hostPhone: value || undefined })} />
         </div>
         <TextArea label="Notes" rows={5} value={draft.stay.notes} onChange={(value) => patchStay({ notes: value || undefined })} />
         <StringListEditor
@@ -1584,16 +1761,16 @@ export default function ManageTrip() {
           fields={[
             { key: 'kind', label: 'Kind', kind: 'select', options: BOOKING_KIND_OPTIONS, required: true },
             { key: 'title', label: 'Title', required: true },
-            { key: 'when', label: 'Date', kind: 'date' },
+            { key: 'when', label: 'Date', kind: 'date', min: draft.startDate, max: draft.endDate },
             { key: 'confirmation', label: 'Confirmation' },
-            { key: 'link', label: 'Link' },
+            { key: 'link', label: 'Link', kind: 'url' },
             { key: 'details', label: 'Details', kind: 'textarea' },
           ] as FieldConfig<Booking>[]}
         />
       </Section>
 
       <Section title={draft.kind === 'event' ? 'Schedule' : 'Itinerary'}>
-        <ItineraryEditor days={draft.itinerary} startDate={draft.startDate} onChange={(itinerary) => patchDraft({ itinerary })} />
+        <ItineraryEditor days={draft.itinerary} startDate={draft.startDate} endDate={draft.endDate} onChange={(itinerary) => patchDraft({ itinerary })} />
       </Section>
 
       <Section title="Ideas And Places">
@@ -1611,7 +1788,7 @@ export default function ManageTrip() {
             { key: 'name', label: 'Name', required: true },
             { key: 'category', label: 'Category' },
             { key: 'address', label: 'Address' },
-            { key: 'url', label: 'URL' },
+            { key: 'url', label: 'URL', kind: 'url' },
             { key: 'notes', label: 'Notes', kind: 'textarea' },
           ] as FieldConfig<Activity>[]}
         />
@@ -1631,7 +1808,7 @@ export default function ManageTrip() {
           fields={[
             { key: 'name', label: 'Name', required: true },
             { key: 'role', label: 'Role' },
-            { key: 'phone', label: 'Phone' },
+            { key: 'phone', label: 'Phone', kind: 'tel' },
             { key: 'arriving', label: 'Arriving' },
             { key: 'leaving', label: 'Leaving' },
           ] as FieldConfig<Person>[]}
@@ -1815,8 +1992,8 @@ export default function ManageTrip() {
           })}
           fields={[
             { key: 'name', label: 'Name', required: true },
-            { key: 'total', label: 'Total', kind: 'number', required: true },
-            { key: 'splitCount', label: 'Split count', kind: 'number', required: true },
+            { key: 'total', label: 'Total', kind: 'number', required: true, min: 0, step: '0.01' },
+            { key: 'splitCount', label: 'Split count', kind: 'number', required: true, min: 1, step: 1 },
             { key: 'status', label: 'Status', kind: 'select', options: BUDGET_STATUS_OPTIONS },
             { key: 'notes', label: 'Notes', kind: 'textarea' },
           ] as FieldConfig<BudgetItem>[]}
@@ -1827,20 +2004,27 @@ export default function ManageTrip() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <TextInput
             label="Embed URL"
+            type="url"
             value={draft.map?.embedUrl}
             onChange={(value) => patchDraft({ map: { ...(draft.map ?? {}), embedUrl: value || undefined } })}
           />
           <TextInput
             label="Center latitude"
             type="number"
+            min={-90}
+            max={90}
+            step="any"
             value={draft.map?.center?.lat}
-            onChange={(value) => patchDraft({ map: { ...(draft.map ?? {}), center: { lat: Number(value || 0), lng: draft.map?.center?.lng ?? 0 } } })}
+            onChange={(value) => patchDraft({ map: { ...(draft.map ?? {}), center: { lat: parseFiniteNumber(value, draft.map?.center?.lat ?? 0), lng: draft.map?.center?.lng ?? 0 } } })}
           />
           <TextInput
             label="Center longitude"
             type="number"
+            min={-180}
+            max={180}
+            step="any"
             value={draft.map?.center?.lng}
-            onChange={(value) => patchDraft({ map: { ...(draft.map ?? {}), center: { lat: draft.map?.center?.lat ?? 0, lng: Number(value || 0) } } })}
+            onChange={(value) => patchDraft({ map: { ...(draft.map ?? {}), center: { lat: draft.map?.center?.lat ?? 0, lng: parseFiniteNumber(value, draft.map?.center?.lng ?? 0) } } })}
           />
         </div>
         <button type="button" className={COMPACT_BUTTON} onClick={() => patchDraft({ map: undefined })}>

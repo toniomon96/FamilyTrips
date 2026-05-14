@@ -251,4 +251,102 @@ describe('trip data validation', () => {
     expect(messages.some((message) => message.includes('Invalid URL'))).toBe(true)
     expect(messages.some((message) => message.includes('Invalid phone'))).toBe(true)
   })
+
+  it('flags invalid calendar dates, out-of-range itinerary days, and unsafe budget numbers', () => {
+    const trip: Trip = {
+      slug: 'bad-dates',
+      name: 'Bad dates',
+      location: 'Somewhere',
+      startDate: '2026-03-01',
+      endDate: '2026-03-02',
+      currency: '$',
+      stay: {
+        name: 'Place',
+        address: 'Address',
+        checkIn: 'Start',
+        checkOut: 'End',
+        amenities: [],
+      },
+      bookings: [
+        { id: 'invalid-booking', kind: 'activity', title: 'Impossible date', when: '2026-02-31' },
+        { id: 'outside-booking', kind: 'activity', title: 'Outside range', when: '2026-03-05' },
+      ],
+      itinerary: [{ date: '2026-03-05', items: [{ title: 'Too late' }] }],
+      thingsToDo: [],
+      people: [],
+      contacts: [],
+      checklist: [],
+      packing: [],
+      budget: [{ id: 'bad-budget', name: 'Bad budget', total: -1, splitCount: 0 }],
+    }
+
+    const errors = validateTripData([trip])
+
+    expect(errors.map((error) => error.path)).toContain('bookings.invalid-booking.when')
+    expect(errors.map((error) => error.path)).toContain('itinerary.2026-03-05')
+    expect(errors.map((error) => error.path)).toContain('bookings.outside-booking.when')
+    expect(errors.map((error) => error.path)).toContain('budget.bad-budget.total')
+    expect(errors.map((error) => error.path)).toContain('budget.bad-budget.splitCount')
+  })
+
+  it('flags invalid planner metadata that would make generated trips hard to store safely', () => {
+    const trip: Trip = {
+      slug: 'bad-planner',
+      name: 'Bad planner',
+      location: 'Somewhere',
+      startDate: '2026-03-01',
+      endDate: '2026-03-02',
+      currency: '$',
+      stay: {
+        name: 'Place',
+        address: 'Address',
+        checkIn: 'Start',
+        checkOut: 'End',
+        amenities: [],
+      },
+      bookings: [],
+      itinerary: [{ date: '2026-03-01', items: [{ title: 'Plan' }] }],
+      thingsToDo: [],
+      people: [],
+      contacts: [],
+      checklist: [],
+      packing: [],
+      budget: [],
+      planner: {
+        draftStrength: 'medium',
+        warnings: [],
+        missingInputs: [],
+        generatedAt: '2026-01-01T00:00:00.000Z',
+        sourceMode: 'deterministic',
+        sourceRefs: [{ id: 'src-known', title: 'Known source', kind: 'user-provided' }],
+        recommendations: [
+          {
+            id: 'rec-unknown-source',
+            name: 'Bad recommendation',
+            category: 'activity',
+            sourceIds: ['src-missing'],
+            bestFor: ['flexible'],
+            whyItFits: 'Bad source id.',
+            confidence: 'low',
+          },
+        ],
+        miniPlans: [
+          {
+            id: 'mp-outside-date',
+            title: 'Outside date',
+            recommendedDate: '2026-03-05',
+            candidateId: 'rec-missing',
+            sourceIds: ['src-missing'],
+          },
+        ],
+      },
+    }
+
+    const paths = validateTripData([trip]).map((error) => error.path)
+
+    expect(paths).toContain('planner.recommendations.rec-unknown-source.sourceIds')
+    expect(paths).toContain('planner.miniPlans.mp-outside-date.candidateId')
+    expect(paths).toContain('planner.miniPlans.mp-outside-date.recommendedDate')
+    expect(paths).toContain('planner.miniPlans.mp-outside-date.sourceIds')
+  })
 })

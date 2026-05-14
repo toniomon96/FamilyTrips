@@ -64,6 +64,19 @@ describe('smart trip generation', () => {
     expect(normalized.validationErrors.map((error) => error.path)).toContain('dates')
   })
 
+  it('rejects impossible calendar dates in generation briefs', () => {
+    const normalized = normalizeTripGenerationBrief({
+      name: 'Impossible Dates',
+      destination: 'Somewhere',
+      startDate: '2026-02-31',
+      endDate: '2026-03-02',
+    })
+
+    expect(normalized.ok).toBe(false)
+    if (normalized.ok) return
+    expect(normalized.validationErrors.map((error) => error.path)).toContain('startDate')
+  })
+
   it('scores weak briefs and returns useful follow-up questions', () => {
     const normalized = normalizeTripGenerationBrief({
       name: 'Quick Beach Trip',
@@ -98,6 +111,16 @@ describe('smart trip generation', () => {
     expect(trip.people.map((person) => person.name)).toEqual(['Logan', 'Morgan'])
     expect(generated.generationSummary.matchedPackId).toBe('le-blanc-los-cabos')
     expect(generated.generationSummary.needsConfirmation.join(' ')).toMatch(/Confirm Play a round of golf/)
+    expect(trip.planner?.brief?.destination).toBe('Le Blanc Los Cabo')
+    expect(trip.planner?.recommendations?.some((item) => item.category === 'restaurant' && item.confidence === 'high')).toBe(true)
+    expect(trip.planner?.miniPlans?.map((plan) => plan.title)).toEqual([
+      'Play a round of golf',
+      'Ride horses on the beach',
+      'Go to Lovers Beach in Cabo',
+    ])
+    expect(trip.planner?.miniPlans?.find((plan) => plan.title.toLowerCase().includes('golf'))?.nextStep).toMatch(/tee time|transportation|club/i)
+    expect(trip.planner?.miniPlans?.find((plan) => plan.title.toLowerCase().includes('horse'))?.packingImplication).toMatch(/closed-toe/i)
+    expect(trip.planner?.miniPlans?.find((plan) => plan.title.toLowerCase().includes('lovers'))?.logisticsNote).toMatch(/outside resort|transportation|boat|water taxi/i)
     expect(text).toContain('golf')
     expect(text).toContain('horse')
     expect(text).toContain('lovers beach')
@@ -108,6 +131,41 @@ describe('smart trip generation', () => {
     expect(trip.copyBlocks?.some((block) => block.title === 'Trip link message')).toBe(true)
     expect(trip.planner?.sourceRefs.some((source) => source.kind === 'official')).toBe(true)
     expect(trip.itinerary.some((day) => day.items.some((item) => item.status === 'needs-confirmation' && item.why))).toBe(true)
+  })
+
+  it('uses location-aware candidates to place must-dos while keeping arrival and departure light', () => {
+    const generated = buildDeterministicTrip(leBlancBrief())
+    const trip = generated.trip
+    const fullDays = trip.itinerary.slice(1, -1)
+    const arrivalItems = trip.itinerary[0].items.map((item) => item.title.toLowerCase()).join(' ')
+    const departureItems = trip.itinerary[trip.itinerary.length - 1].items.map((item) => item.title.toLowerCase()).join(' ')
+
+    expect(fullDays.some((day) => day.items.some((item) => /golf/i.test(item.title)))).toBe(true)
+    expect(fullDays.some((day) => day.items.some((item) => /horse/i.test(item.title)))).toBe(true)
+    expect(fullDays.some((day) => day.items.some((item) => /lovers/i.test(item.title)))).toBe(true)
+    expect(arrivalItems).not.toMatch(/golf|horse|lovers/)
+    expect(departureItems).not.toMatch(/golf|horse|lovers/)
+    expect(trip.itinerary[1].items.length).toBeGreaterThan(trip.itinerary[0].items.length)
+  })
+
+  it('does not claim exact distance, travel time, prices, hours, or availability in generated planning language', () => {
+    const generated = buildDeterministicTrip(leBlancBrief())
+    const trip = generated.trip
+    const planningText = JSON.stringify({
+      itinerary: trip.itinerary.map((day) => day.items.map((item) => ({ title: item.title, notes: item.notes, why: item.why, nextStep: item.nextStep }))),
+      recommendations: trip.planner?.recommendations?.map((item) => ({
+        whyItFits: item.whyItFits,
+        nextStep: item.nextStep,
+        logisticsNote: item.logisticsNote,
+      })),
+      miniPlans: trip.planner?.miniPlans,
+      limitations: trip.planner?.locationLimitations,
+    }).toLowerCase()
+
+    expect(planningText).not.toMatch(/\b\d+\s*(minute|minutes|min|mins|mile|miles)\b/)
+    expect(planningText).not.toMatch(/\bguaranteed\b|\bavailable at\b|\bexact drive\b/)
+    expect(planningText).toContain('confirm transportation')
+    expect(planningText).toContain('v1 does not calculate exact distance')
   })
 
   it('builds event-native drafts with run-of-show, supplies, food, and tasks', () => {
@@ -181,9 +239,38 @@ describe('smart trip generation', () => {
     })
 
     expect(generated.generationSummary.source).toBe('ai-fallback')
-    expect(generated.trip.planner?.sourceMode).toBe('ai-fallback')
+    expect(generated.trip.planner?.sourceMode).toBe('curated')
+    expect(generated.trip.planner?.notes?.join(' ')).toContain('AI planner did not return valid output')
     expect(generated.trip.name).toBe('Logan + Morgan Honeymoon')
     expect(generated.trip.itinerary).toHaveLength(5)
+    expect(validateTripForSave(generated.trip)).toHaveLength(0)
+  })
+
+  it('keeps live-search source mode visible when the AI planner falls back', async () => {
+    const brief = leBlancBrief()
+    const generated = await generateSmartTrip(brief, {
+      researcher: async () => ({
+        usedSearch: true,
+        sourceRefs: [
+          {
+            id: 'src-live-search',
+            title: 'Live source',
+            url: 'https://los-cabos.leblancsparesorts.com/dining',
+            kind: 'search',
+          },
+        ],
+        insights: ['Live source insight.'],
+        notes: ['Live web search returned source references for review.'],
+      }),
+      aiPlanner: async (_input, context) => ({
+        ...context.fallbackTrip,
+        itinerary: [],
+      }),
+    })
+
+    expect(generated.generationSummary.source).toBe('ai-fallback')
+    expect(generated.trip.planner?.sourceMode).toBe('search')
+    expect(generated.generationSummary.notes.join(' ')).toContain('Live web research was used')
     expect(validateTripForSave(generated.trip)).toHaveLength(0)
   })
 
@@ -208,6 +295,42 @@ describe('smart trip generation', () => {
     expect(validateTripForSave(generated.trip)).toHaveLength(0)
     expect(generated.trip.planner?.sourceMode).toBe('search')
     expect(generated.generationSummary.sourceRefs.some((source) => source.id === 'src-official-golf')).toBe(true)
+  })
+
+  it('drops unknown recommendation source ids so generated trips stay valid to store', async () => {
+    const brief = leBlancBrief()
+    const generated = await generateSmartTrip(brief, {
+      researcher: async () => ({
+        usedSearch: true,
+        sourceRefs: [
+          {
+            id: 'src-known-restaurant',
+            title: 'Known source',
+            url: 'https://example.com/known-restaurant-source',
+            kind: 'search',
+          },
+        ],
+        insights: ['Known source insight.'],
+        notes: ['Mocked research bundle with one valid source.'],
+        recommendations: [
+          {
+            id: 'rec-ai-extra',
+            name: 'AI Extra Dinner',
+            category: 'restaurant',
+            sourceIds: ['src-known-restaurant', 'src-model-invented'],
+            bestFor: ['dinner'],
+            whyItFits: 'A researched dinner idea from the mocked response.',
+            bookingStatus: 'needs-confirmation',
+            nextStep: 'Confirm reservation details.',
+            confidence: 'medium',
+          },
+        ],
+      }),
+    })
+
+    expect(validateTripForSave(generated.trip)).toHaveLength(0)
+    const extra = generated.trip.planner?.recommendations?.find((item) => item.id === 'rec-ai-extra')
+    expect(extra?.sourceIds).toEqual(['src-known-restaurant'])
   })
 
   it('accepts valid AI drafts but preserves user facts and strips unsafe invented details', async () => {

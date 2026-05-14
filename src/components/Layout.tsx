@@ -1,4 +1,4 @@
-import { Link, Navigate, Outlet, useParams } from 'react-router-dom'
+import { Link, Navigate, Outlet, useLocation, useParams } from 'react-router-dom'
 import BottomNav from './BottomNav'
 import { trips } from '../data/trips'
 import { TripContext } from '../context/tripContextCore'
@@ -31,6 +31,7 @@ function TripRouteStatus({ status }: { status: 'loading' | 'error' }) {
 
 export default function Layout() {
   const { tripSlug } = useParams<{ tripSlug: string }>()
+  const location = useLocation()
   const seedTrip = tripSlug ? trips[tripSlug] : undefined
   const staticResult = useTripWithOverride(seedTrip)
   const dynamicResult = useResolvedTrip(seedTrip ? undefined : tripSlug)
@@ -43,6 +44,7 @@ export default function Layout() {
   if (!trip) return <Navigate to="/" replace />
 
   const basePath = `/${trip.slug}`
+  const isManageRoute = location.pathname.replace(/\/+$/, '').endsWith('/manage')
 
   return (
     <TripContext.Provider value={trip}>
@@ -53,7 +55,7 @@ export default function Layout() {
         >
           Skip to content
         </a>
-        <main id="main" className="mx-auto max-w-xl px-4 pt-4 pb-28">
+        <main id="main" className={`mx-auto max-w-xl px-4 pt-4 ${isManageRoute ? 'pb-8' : 'pb-28'}`}>
           <Link
             to="/"
             className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 mb-3"
@@ -63,7 +65,7 @@ export default function Layout() {
           </Link>
           <Outlet />
         </main>
-        <BottomNav basePath={basePath} kind={trip.kind} />
+        {!isManageRoute && <BottomNav basePath={basePath} kind={trip.kind} />}
       </div>
     </TripContext.Provider>
   )

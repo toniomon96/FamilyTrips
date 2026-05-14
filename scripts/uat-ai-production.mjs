@@ -186,14 +186,22 @@ async function main() {
     const sourceRefs = generated?.generationSummary?.sourceRefs ?? []
     const sourceRefsCount = Array.isArray(sourceRefs) ? sourceRefs.length : 0
     const sourceMode = generated?.trip?.planner?.sourceMode
+    const recommendationsCount = generated?.trip?.planner?.recommendations?.length ?? 0
+    const miniPlansCount = generated?.trip?.planner?.miniPlans?.length ?? 0
+    const hasSavedBrief = Boolean(generated?.trip?.planner?.brief)
     const usedLiveResearch = /Live web research was used/i.test(notesText) || sourceMode === 'search'
+    const plannerFallback = /AI planner did not return valid output/i.test(notesText)
 
     addCheck('created-dynamic-uat-row', created && generated.row.source === 'dynamic' && generated.row.visibility === 'unlisted', {
       source: generated?.row?.source,
       visibility: generated?.row?.visibility,
     })
     addCheck('live-research-used', usedLiveResearch, { sourceMode, notes: generated?.generationSummary?.notes ?? [] }, usedLiveResearch ? undefined : 'Generation did not report live web research.')
+    addCheck('no-invalid-ai-planner-fallback', !plannerFallback, { sourceMode }, plannerFallback ? 'AI composer failed validation instead of cleanly using the source-aware planner path.' : undefined)
     addCheck('source-refs-present', sourceRefsCount > 0, { sourceRefsCount }, sourceRefsCount > 0 ? undefined : 'No source refs returned.')
+    addCheck('recommendation-candidates-present', recommendationsCount > 0, { recommendationsCount }, recommendationsCount > 0 ? undefined : 'No recommendation candidates were stored.')
+    addCheck('mini-plans-present', miniPlansCount >= 3, { miniPlansCount }, miniPlansCount >= 3 ? undefined : 'Expected at least three must-do mini-plans.')
+    addCheck('planner-brief-saved', hasSavedBrief, { hasSavedBrief }, hasSavedBrief ? undefined : 'Planner brief was not persisted.')
 
     const tripText = JSON.stringify(generated?.trip ?? {}).toLowerCase()
     for (const term of ['golf', 'horse', 'lovers beach']) {

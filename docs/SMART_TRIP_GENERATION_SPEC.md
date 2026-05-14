@@ -12,7 +12,9 @@ The self-serve trip creator should ask for the few details a traveler already kn
 
 - `/trips/new` now defaults to **Build my trip**, with **Start blank** preserved as the secondary path.
 - `POST /api/trips` supports `action: "generate"` for smart drafts and keeps `action: "create"` for blank shells.
-- Smart generation uses a hybrid path: curated destination packs first, optional server-side OpenAI structured output, and deterministic fallback when AI is unavailable or invalid.
+- Smart generation uses a hybrid path: curated destination packs first, optional server-side OpenAI web search, and deterministic fallback when AI/search is unavailable or invalid. The experimental AI composer is intentionally off by default and controlled by `TRIP_AI_PLANNER_ENABLED`.
+- Location-aware V1 is search-first: the generator saves the normalized brief, builds recommendation candidates from curated packs and live search, turns must-dos into mini-plans, and uses those pieces to shape itinerary placement, booking reminders, checklist, packing, and budget placeholders.
+- V1 does not perform real maps/routing, live availability, exact hours, exact prices, or weather checks. Generated copy must stay conservative and tell users to confirm transportation, reservation rules, and activity/provider details.
 - The first curated destination pack is Le Blanc Spa Resort Los Cabos, sourced from official Le Blanc pages for resort dining and experiences.
 - Generated trips are dynamic Supabase-backed trips, default to `visibility: "unlisted"`, and redirect to `/<slug>/manage?created=1&draft=generated`.
 - The manage page shows a generated-draft handoff panel with next review actions and a copy-link button.
@@ -138,6 +140,10 @@ The generator should produce a full valid `Trip` object using the existing data 
 - `currency`
 - `tagline`
 - `kind` omitted for normal trips
+- `planner.brief` with the original normalized location, stay, dates, people, pace, preferences, raw context, and must-do anchors
+- `planner.recommendations` with source-backed restaurants, activities, entertainment, logistics, or fallback candidates
+- `planner.miniPlans` with the day/window, next step, logistics note, packing implication, checklist link, booking link, budget link, and source refs for each must-do
+- `planner.locationLimitations` explaining that V1 is source/search aware but not maps/availability aware
 
 ### Stay
 
@@ -167,6 +173,9 @@ Rules:
 - Keep a honeymoon/resort trip loose: morning, afternoon, dinner is enough unless the user asks for more.
 - Required must-dos should become named itinerary items.
 - Do not invent confirmation numbers, exact booking times, or private details.
+- Do not claim exact drive times, distances, live hours, exact prices, or availability.
+- Use source-backed or curated recommendation candidates when possible.
+- Keep arrival and departure days lighter than full days.
 
 ### Things To Do
 
@@ -177,6 +186,7 @@ Include:
 - Dining options
 - Rainy-day or low-energy alternatives
 - Nearby outside options only when user asked for them or when clearly relevant
+- Source-backed recommendation cards with confidence and conservative logistics notes
 
 Fields:
 

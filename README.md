@@ -49,6 +49,7 @@ For trusted family/friends, use the app:
 1. Open `/trips/new`.
 2. Enter the shared trip edit PIN.
 3. Use **Build my trip** for the smart draft path: add the destination/stay, dates, travelers, trip vibe, pace, and must-do items.
+4. The planner now uses location/stay text, curated packs, and optional live search to build recommendation candidates and must-do mini-plans. It is search-first, not maps-backed routing, so it tells users to confirm transportation, current hours, prices, and availability instead of claiming exact logistics.
 4. Use **Start blank** only when you want an empty starter shell.
 5. The app opens the manage page next with itinerary, restaurants/activities, checklist, packing, bookings, budget placeholders, and copyable messages ready to review.
 
@@ -81,6 +82,7 @@ npm run build    # typecheck + production build into dist/
 npm run lint     # eslint
 npm run test     # focused unit tests for fragile trip rules
 npm run validate:data # check trip/event data for obvious mistakes
+npm run uat      # full temporary-deployment UAT with cleanup
 npm run preview  # preview the production build
 ```
 
@@ -91,8 +93,10 @@ The checklist and packing toggles are backed by Supabase so changes can sync acr
 - `VITE_SUPABASE_URL` — `https://<project-ref>.supabase.co`
 - `VITE_SUPABASE_ANON_KEY` — the project's **anon / publishable** key
 - `TRIP_EDITOR_PIN` — shared server-only PIN for creating and editing dynamic self-serve trips
-- `OPENAI_API_KEY` — optional server-only key for AI-assisted smart drafts
-- `TRIP_GENERATION_MODEL` — optional OpenAI model override; falls back to `gpt-5.5`
+- `OPENAI_API_KEY` — optional server-only key for live research and AI-assisted smart drafts
+- `TRIP_RESEARCH_MODEL` — optional OpenAI web-search model override; falls back to `gpt-5-mini`
+- `TRIP_AI_PLANNER_ENABLED` — optional experimental AI composer toggle; defaults off so source-aware deterministic planning stays fast and reliable
+- `TRIP_GENERATION_MODEL` — optional OpenAI composer model override; falls back to `gpt-5-mini`
 
 Set them in Vercel → Project Settings → Environment Variables (Production + Preview + Development). Trigger a redeploy after saving — Vite bakes `VITE_` env vars at build time.
 
@@ -107,11 +111,11 @@ The checklist uses two tables:
 
 Packing reuses `checklist_state` with namespaced item IDs like `packing:pk-docs-id`, so no third table is needed.
 
-Owner saves go through `/api/trip-overrides`, and self-serve trip creation goes through `/api/trips`. These APIs require server-only `ADMIN_PIN`, `TRIP_EDITOR_PIN`, and `SUPABASE_SERVICE_ROLE_KEY` env vars. Smart trip generation optionally uses `OPENAI_API_KEY`; if it is missing or returns invalid data, the server still creates a deterministic smart draft. Use `vercel dev` when testing those APIs locally; plain `npm run dev` only starts the Vite client server.
+Owner saves go through `/api/trip-overrides`, and self-serve trip creation goes through `/api/trips`. These APIs require server-only `ADMIN_PIN`, `TRIP_EDITOR_PIN`, and `SUPABASE_SERVICE_ROLE_KEY` env vars. Smart trip generation optionally uses `OPENAI_API_KEY`; if it is missing or returns invalid data, the server still creates a curated/deterministic smart draft. Generated planner metadata is stored inside the trip JSON as `planner.brief`, `planner.recommendations`, `planner.miniPlans`, source refs, and location-awareness limitations. Use `vercel dev` when testing those APIs locally; plain `npm run dev` only starts the Vite client server.
 
 The Supabase posture is intentionally casual: anon clients can read/write checklist rows for shared family links. Keep the app deployed only where that tradeoff is acceptable. Code should always query by the current registered trip slugs or direct trip slug, but this is not authentication.
 
-See `docs/SUPABASE.md` for setup SQL, `docs/DEPLOY_SMOKE_TEST.md` for post-deploy checks, `docs/TEMPLATES.md` for starter outlines, and `ROADMAP.md` for the practical next-wave plan.
+See `docs/SUPABASE.md` for setup SQL, `docs/TRIP_CREATION_FLOW.md` for the self-serve form flow and proof reports, `docs/DEPLOY_SMOKE_TEST.md` for post-deploy checks, `docs/TEMPLATES.md` for starter outlines, and `ROADMAP.md` for the practical next-wave plan.
 
 ## Privacy model
 

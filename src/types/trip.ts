@@ -4,6 +4,18 @@ export type PlanKind = 'trip' | 'event'
 export type PlanItemStatus = 'confirmed' | 'suggested' | 'needs-booking' | 'needs-confirmation'
 export type DraftStrength = 'weak' | 'medium' | 'strong'
 export type PlannerSourceKind = 'official' | 'user-provided' | 'search' | 'curated' | 'inferred'
+export type PlannerResearchMode = 'search' | 'curated' | 'fallback'
+export type PlannerRecommendationCategory = 'restaurant' | 'activity' | 'entertainment' | 'logistics' | 'fallback'
+export type PlannerRecommendationBestFor =
+  | 'breakfast'
+  | 'lunch'
+  | 'dinner'
+  | 'morning'
+  | 'afternoon'
+  | 'evening'
+  | 'rainy-day'
+  | 'flexible'
+export type PlannerRecommendationConfidence = 'high' | 'medium' | 'low'
 
 export type PlannerSourceRef = {
   id: string
@@ -24,6 +36,75 @@ export type PlannerExplained = {
   why?: string
   nextStep?: string
   sourceIds?: string[]
+}
+
+export type PlannerSavedMustDo = {
+  title: string
+  type?: string
+  priority?: 'required' | 'nice-to-have'
+  timing?: string
+  date?: string
+  bookingStatus?: string
+  logistics?: string
+  location?: string
+  duration?: string
+  why?: string
+}
+
+export type PlannerSavedBrief = {
+  destination: string
+  locationText?: string
+  stayName?: string
+  stayAddress?: string
+  venueName?: string
+  venueAddress?: string
+  startDate: string
+  endDate: string
+  arrivalWindow?: string
+  departureWindow?: string
+  travelers?: string
+  travelerNames?: string[]
+  guestCount?: string
+  vibe?: string[]
+  pace?: string
+  planningHelp?: string
+  budgetStyle?: string
+  foodPreferences?: string
+  kidsAndAges?: string
+  mobilityNotes?: string
+  mustDos?: PlannerSavedMustDo[]
+  niceToHaves?: PlannerSavedMustDo[]
+  confirmedItems?: PlannerSavedMustDo[]
+  followUpAnswers?: string[]
+  rawContext?: string
+}
+
+export type PlannerRecommendationCandidate = PlannerAnnotated & {
+  id: string
+  name: string
+  category: PlannerRecommendationCategory
+  addressOrArea?: string
+  bestFor: PlannerRecommendationBestFor[]
+  whyItFits: string
+  bookingStatus?: PlanItemStatus
+  logisticsNote?: string
+  confidence: PlannerRecommendationConfidence
+}
+
+export type PlannerMiniPlan = PlannerAnnotated & {
+  id: string
+  title: string
+  type?: string
+  priority?: 'required' | 'nice-to-have'
+  recommendedDate?: string
+  recommendedTimeWindow?: string
+  candidateId?: string
+  logisticsNote?: string
+  packingImplication?: string
+  checklistItemId?: string
+  bookingId?: string
+  budgetItemId?: string
+  confidence?: PlannerRecommendationConfidence
 }
 
 export type Booking = PlannerAnnotated & {
@@ -168,6 +249,11 @@ export type Trip = {
     sourceRefs: PlannerSourceRef[]
     questions?: string[]
     notes?: string[]
+    brief?: PlannerSavedBrief
+    recommendations?: PlannerRecommendationCandidate[]
+    miniPlans?: PlannerMiniPlan[]
+    researchMode?: PlannerResearchMode
+    locationLimitations?: string[]
   }
   map?: {
     embedUrl?: string

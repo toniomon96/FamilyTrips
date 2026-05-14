@@ -219,12 +219,114 @@ async function testTripsNewModes(browser) {
         await expect(page.locator('header').getByRole('button', { name: 'Build my plan' })).toHaveAttribute('aria-pressed', 'true')
         await expect(page.getByText('Start with the essentials')).toBeVisible()
         await expect(page.getByText('Toni shares this with trusted family and friends')).toBeVisible()
+        const startDate = page.getByLabel('Start date')
+        const endDate = page.getByLabel('End date')
+        await startDate.fill('2026-07-23')
+        await expect(endDate).toHaveValue('2026-07-23')
+        await expect(endDate).toHaveAttribute('min', '2026-07-23')
+        await endDate.fill('2026-07-19')
+        await expect(page.getByText('End date must be the same day or after the start date.')).toBeVisible()
+        await expect(page.locator('form').getByRole('button', { name: 'Start planning' })).toBeDisabled()
         const bodyText = await page.locator('body').innerText()
         if (/Logan|Morgan/i.test(bodyText)) throw new Error('Trips/new still exposes Logan or Morgan as public example copy.')
         await screenshot(page, `trips-new-${label}`)
       })
     })
   }
+}
+
+async function testTripsNewSlowProgress(browser) {
+  await runStep('browser.trips-new.slow-progress', async () => {
+    await withCheckedPage(browser, 'trips-new-slow-progress', { width: 390, height: 844 }, async (page) => {
+      await page.route('**/api/trips', async (route) => {
+        const payload = route.request().postDataJSON()
+        await page.waitForTimeout(900)
+        if (payload.action === 'briefQuestions') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              ok: true,
+              quality: {
+                score: 7,
+                draftStrength: 'medium',
+                missingInputs: [],
+                warnings: [],
+                questions: [],
+              },
+            }),
+          })
+          return
+        }
+        if (payload.action === 'preview') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              ok: true,
+              trip: {
+                slug: 'mock-progress-trip',
+                name: 'Mock Progress Trip',
+                location: 'Mock City',
+                startDate: '2026-07-19',
+                endDate: '2026-07-20',
+                visibility: 'unlisted',
+                currency: '$',
+                stay: { name: 'Mock stay', address: 'Mock area', checkIn: 'Confirm time', checkOut: 'Confirm time', amenities: [] },
+                bookings: [],
+                itinerary: [{ date: '2026-07-19', title: 'Arrival', items: [{ title: 'Settle in', status: 'suggested' }] }],
+                thingsToDo: [],
+                people: [],
+                contacts: [],
+                checklist: [],
+                packing: [],
+                copyBlocks: [],
+                budget: [],
+                planner: {
+                  draftStrength: 'medium',
+                  warnings: [],
+                  missingInputs: [],
+                  generatedAt: '2026-05-14T00:00:00.000Z',
+                  sourceMode: 'deterministic',
+                  sourceRefs: [],
+                  questions: [],
+                  notes: [],
+                },
+              },
+              generationSummary: {
+                source: 'deterministic',
+                draftStrength: 'medium',
+                notes: [],
+                needsConfirmation: [],
+                missingInputs: [],
+                questions: [],
+                sourceRefs: [],
+              },
+            }),
+          })
+          return
+        }
+        await route.continue()
+      })
+
+      await page.goto(`${baseUrl}/trips/new`, { waitUntil: 'domcontentloaded' })
+      await page.getByLabel('Trip edit PIN').fill(pin)
+      await page.getByLabel(/Destination/).fill('Mock City')
+      await page.getByLabel('Start date').fill('2026-07-19')
+      await page.getByLabel('End date').fill('2026-07-20')
+      await page.getByLabel('Tell us everything you already know').fill('Mock trip with enough context to test slow progress messaging.')
+      await page.getByRole('button', { name: /Start planning/i }).click()
+      await page.locator('form').getByRole('button', { name: 'Get smart questions' }).click()
+      await expect(page.getByRole('status')).toContainText('Checking your brief')
+      await expect(page.getByText('Nothing is saved here.')).toBeVisible()
+      await expect(page.getByText('Smart follow-up questions')).toBeVisible({ timeout: 10000 })
+      await page.locator('form').getByRole('button', { name: 'Build draft preview' }).click()
+      await expect(page.getByRole('status')).toContainText('Building your draft')
+      await expect(page.getByText('Nothing is saved until you accept the preview.')).toBeVisible()
+      await expect(page.getByText('Review the draft before saving')).toBeVisible({ timeout: 10000 })
+      await screenshot(page, 'trips-new-slow-progress')
+    })
+  })
 }
 
 async function testStaticAndEventManageCopy(browser) {
@@ -301,6 +403,8 @@ async function testGeneratedRoutes(browser) {
         await expect(page.getByRole('tab', { name: 'Overview' })).toBeVisible()
         await expect(page.getByRole('tab', { name: 'Advanced Editor' })).toBeVisible()
         await expect(page.getByText('Draft confidence')).toBeVisible()
+        await expect(page.getByText('Based on this brief')).toBeVisible()
+        await expect(page.getByText('Recommended places')).toBeVisible()
         await expect(page.getByRole('link', { name: 'View trip' })).toBeVisible()
         if (label === 'mobile') {
           const height = await page.evaluate(() => document.documentElement.scrollHeight)
@@ -421,6 +525,7 @@ async function main() {
   try {
     if (requestedChecks.has('render')) {
       await testTripsNewModes(browser)
+      await testTripsNewSlowProgress(browser)
       await testPublicRouteMatrix(browser)
       await testGeneratedRoutes(browser)
       await testStaticAndEventManageCopy(browser)

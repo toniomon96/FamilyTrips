@@ -159,6 +159,13 @@ describe('trip create API action handler', () => {
     if (!('trip' in result.body)) return
     expect(result.body.generationSummary?.matchedPackId).toBe('le-blanc-los-cabos')
     expect(result.body.trip.itinerary).toHaveLength(5)
+    expect(result.body.trip.planner?.brief?.destination).toBe('Le Blanc Spa Resort Los Cabos')
+    expect(result.body.trip.planner?.recommendations?.some((item) => item.category === 'restaurant')).toBe(true)
+    expect(result.body.trip.planner?.miniPlans?.map((plan) => plan.title)).toEqual([
+      'Play a round of golf',
+      'Ride horses on the beach',
+      'Go to Lovers Beach',
+    ])
     expect(JSON.stringify(result.body.trip).toLowerCase()).toContain('lovers beach')
   })
 
@@ -214,6 +221,8 @@ describe('trip create API action handler', () => {
     if (!result.body.ok || !('trip' in result.body)) return
     expect(result.body.trip.slug).toBe('preview-honeymoon')
     expect(result.body.generationSummary?.sourceRefs.length).toBeGreaterThan(0)
+    expect(result.body.trip.planner?.brief?.destination).toBe('Le Blanc Los Cabos')
+    expect(result.body.trip.planner?.miniPlans?.length).toBe(2)
   })
 
   it('rejects preview duplicate slugs before writing', async () => {

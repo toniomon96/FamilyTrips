@@ -77,7 +77,7 @@ Durable notes for product decisions, open questions, and why the app changed. Ke
 
 - Ask: Toni wanted the best remaining closeout work knocked out after deploy.
 - Decision: keep the shipped app live, add a trusted-planner handoff for Logan/future users, add a repeatable `npm run ready:production` check, and make the create form more explicit about the context that creates a strong draft.
-- Environment posture: production has the required edit/admin/Supabase env names; live OpenAI research remains optional and should be enabled by adding `OPENAI_API_KEY` plus research envs when Toni wants stronger source-aware generation.
+- Environment posture at that point: production had the required edit/admin/Supabase env names; live OpenAI research was still optional and needed OpenAI research envs before stronger source-aware generation. Later entries record the live-research configuration and UAT proof.
 
 ## 2026-05-14 - Command Center Quality Slice
 
@@ -94,3 +94,22 @@ Durable notes for product decisions, open questions, and why the app changed. Ke
 - Guardrail: add `npm run privacy:scan` and wire it into CI/readiness so public seed-data privacy regressions fail fast.
 - UAT posture: live AI research verification is opt-in through `npm run uat:ai-production`; normal UAT remains safe and predictable.
 - Cleanup posture: old ignored UAT report folders can be pruned with a dry-run-first `npm run clean:uat-results -- --keep 10`.
+
+## 2026-05-14 - End-To-End Form Proof And AI Research Fix
+
+- Ask: Toni caught real form bugs: end date could be earlier than start date, and the planning action looked stuck without progress or recovery guidance.
+- Decision: treat this as a real end-to-end product bug, not a cosmetic issue.
+- Fix: add shared strict date validation, inline form errors, manage-page validation guardrails, visible planning progress stages, elapsed-time copy, timeouts, and recovery links for create flows.
+- AI posture: live OpenAI web research is configured with `gpt-5-mini`; the experimental AI composer is off by default through `TRIP_AI_PLANNER_ENABLED=0` so source-aware deterministic generation stays reliable.
+- Proof: `npm run uat` passed against a temporary Vercel deployment and exercised real form submission, generated trip routing, manage save/history/restore, visibility, checklist/packing persistence, browser screenshots, production smoke, and cleanup.
+- Proof: `npm run uat:ai-production` passed with `sourceMode = search`, live research notes, source refs, required Le Blanc must-dos, UAT row cleanup, and temp deployment cleanup.
+- Documentation: `docs/TRIP_CREATION_FLOW.md` is the human-readable source of truth for how `/trips/new` works and what the tests prove.
+
+## 2026-05-14 - Location-Aware Planner V1
+
+- Ask: Toni clarified that the planner must actually use stay/location context and must-dos to produce useful restaurants, activities, entertainment, logistics notes, and itinerary placements.
+- Decision: implement search-first location awareness on top of the existing wizard and deterministic builder, without claiming maps/routing capability.
+- Data posture: generated dynamic trips now persist `planner.brief`, `planner.recommendations`, `planner.miniPlans`, `planner.researchMode`, and `planner.locationLimitations` inside the existing trip JSON. No new database table or migration was added.
+- Planning posture: Le Blanc pack items and live-search recommendations become normalized recommendation candidates. Each must-do becomes a mini-plan with suggested day/window, booking or confirmation next step, logistics note, packing implication, checklist link, booking link, and budget placeholder.
+- Honesty posture: generated copy should say "confirm transportation," "ask concierge," and "flexible block" instead of exact drive times, distances, prices, live hours, or availability. V1 is source/search aware, not maps-backed routing.
+- UX posture: `/trips/new` review and the manage command center now surface the saved brief, recommended places, must-do mini-plans, needs-booking/needs-confirmation tasks, and source/location limitation notes.

@@ -173,6 +173,91 @@ describe('trip override API action handler', () => {
     expect(result.body.assist.mergedTrip.bookings.some((booking) => booking.title === 'Golf')).toBe(true)
   })
 
+  it('uses saved planner recommendations and mini-plans for location-aware Smart Assist', async () => {
+    const dynamicCurrent: TripOverrideRow = {
+      trip_slug: 'logan-morgan-honeymoon',
+      data: {
+        ...editableFieldsFromTrip(okc),
+        name: 'Logan + Morgan Honeymoon',
+        location: 'Los Cabos, Mexico',
+        visibility: 'unlisted',
+        planner: {
+          draftStrength: 'strong',
+          warnings: [],
+          missingInputs: [],
+          generatedAt: '2026-01-01T00:00:00.000Z',
+          sourceMode: 'curated',
+          sourceRefs: [{ id: 'src-user-brief', title: 'User brief', kind: 'user-provided' }],
+          recommendations: [
+            {
+              id: 'rec-lumiere',
+              name: 'Lumiere',
+              category: 'restaurant',
+              sourceIds: ['src-user-brief'],
+              bestFor: ['dinner'],
+              whyItFits: 'Romantic dinner option from saved destination context.',
+              bookingStatus: 'needs-confirmation',
+              nextStep: 'Ask concierge about availability and dress code.',
+              confidence: 'high',
+            },
+          ],
+          miniPlans: [
+            {
+              id: 'mp-golf',
+              title: 'Play a round of golf',
+              type: 'activity',
+              status: 'needs-booking',
+              recommendedDate: okc.startDate,
+              recommendedTimeWindow: 'Morning',
+              logisticsNote: 'Confirm tee time, transportation, club rental, and dress code.',
+              packingImplication: 'Golf outfit and sunscreen.',
+              sourceIds: ['src-user-brief'],
+            },
+          ],
+        },
+      },
+      version: 1,
+      updated_at: '2026-01-01T00:00:00.000Z',
+      updated_by: 'creator',
+      source: 'dynamic',
+      visibility: 'unlisted',
+      created_at: '2026-01-01T00:00:00.000Z',
+      created_by: 'Logan',
+    }
+    const state = createStore([], dynamicCurrent)
+    const restaurants = await runTripOverrideAction(
+      {
+        action: 'assistPreview',
+        tripSlug: 'logan-morgan-honeymoon',
+        pin: 'editor',
+        assistAction: 'improve-restaurants',
+      },
+      state.store,
+      { adminPin: 'admin', editorPin: 'editor' },
+    )
+    const miniPlans = await runTripOverrideAction(
+      {
+        action: 'assistPreview',
+        tripSlug: 'logan-morgan-honeymoon',
+        pin: 'editor',
+        assistAction: 'must-do-mini-plans',
+      },
+      state.store,
+      { adminPin: 'admin', editorPin: 'editor' },
+    )
+
+    expect(restaurants.status).toBe(200)
+    expect(miniPlans.status).toBe(200)
+    expect(state.current?.version).toBe(1)
+    if (restaurants.body.ok && 'assist' in restaurants.body) {
+      expect(restaurants.body.assist.mergedTrip.thingsToDo.some((item) => item.name === 'Lumiere')).toBe(true)
+    }
+    if (miniPlans.body.ok && 'assist' in miniPlans.body) {
+      expect(miniPlans.body.assist.mergedTrip.bookings.some((booking) => booking.title === 'Play a round of golf')).toBe(true)
+      expect(miniPlans.body.assist.mergedTrip.packing?.some((item) => item.title.includes('Play a round of golf'))).toBe(true)
+    }
+  })
+
   it('does not let the shared editor PIN preview Smart Assist for static seed trips', async () => {
     const state = createStore()
     const result = await runTripOverrideAction(

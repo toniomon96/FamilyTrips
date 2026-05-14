@@ -8,6 +8,10 @@ export type SmartAssistAction =
   | 'packing-checklist'
   | 'looser-day'
   | 'tighter-day'
+  | 'improve-restaurants'
+  | 'improve-activities'
+  | 'must-do-mini-plans'
+  | 'logistics-notes'
 
 export type SmartAssistPreview = {
   data: TripOverrideData
@@ -51,6 +55,21 @@ function addPacking(trip: Trip, title: string, category: string, notes?: string)
   return true
 }
 
+function addThingToDo(trip: Trip, title: string, category: string, notes?: string, sourceIds?: string[], nextStep?: string): boolean {
+  if (trip.thingsToDo.some((item) => item.name.toLowerCase() === title.toLowerCase())) return false
+  trip.thingsToDo.push({
+    id: makeStableIdFromLabel('td', title, ids(trip.thingsToDo)),
+    name: title,
+    category,
+    notes,
+    sourceIds,
+    status: 'needs-confirmation',
+    why: 'Smart Assist added this from the saved planning brief and recommendation candidates.',
+    nextStep: nextStep ?? 'Confirm current details before relying on this idea.',
+  })
+  return true
+}
+
 function ensurePlanner(trip: Trip) {
   trip.planner = {
     draftStrength: trip.planner?.draftStrength ?? 'medium',
@@ -60,6 +79,11 @@ function ensurePlanner(trip: Trip) {
     sourceMode: trip.planner?.sourceMode ?? 'deterministic',
     sourceRefs: trip.planner?.sourceRefs ?? [],
     questions: trip.planner?.questions,
+    brief: trip.planner?.brief,
+    recommendations: trip.planner?.recommendations,
+    miniPlans: trip.planner?.miniPlans,
+    researchMode: trip.planner?.researchMode,
+    locationLimitations: trip.planner?.locationLimitations,
     notes: [...(trip.planner?.notes ?? []), 'Smart Assist preview generated from the currently saved trip.'],
   }
 }
@@ -69,6 +93,68 @@ export function generateSmartAssistPreview(trip: Trip, action: SmartAssistAction
   const summary: string[] = []
   const warnings: string[] = []
   ensurePlanner(next)
+  const recommendations = next.planner?.recommendations ?? []
+  const miniPlans = next.planner?.miniPlans ?? []
+
+  if (action === 'improve-restaurants' || action === 'improve-activities') {
+    const desiredCategory = action === 'improve-restaurants' ? 'restaurant' : 'activity'
+    const candidates = recommendations.filter((item) => item.category === desiredCategory).slice(0, 8)
+    for (const candidate of candidates) {
+      const added = addThingToDo(
+        next,
+        candidate.name,
+        candidate.category === 'restaurant' ? 'Dining' : 'Activity',
+        [candidate.whyItFits, candidate.logisticsNote].filter(Boolean).join(' '),
+        candidate.sourceIds,
+        candidate.nextStep,
+      )
+      if (added) summary.push(`Added ${candidate.name} to recommended ${desiredCategory === 'restaurant' ? 'restaurants' : 'activities'}.`)
+    }
+    if (candidates.length === 0) {
+      warnings.push(`No saved ${desiredCategory === 'restaurant' ? 'restaurant' : 'activity'} recommendations were available. Run a stronger trip preview or add more location context first.`)
+    }
+  }
+
+  if (action === 'must-do-mini-plans') {
+    for (const plan of miniPlans) {
+      if (!next.bookings.some((booking) => booking.title.toLowerCase() === plan.title.toLowerCase())) {
+        next.bookings.push({
+          id: makeStableIdFromLabel('bk', plan.title, ids(next.bookings)),
+          kind: plan.type === 'travel' ? 'car' : 'activity',
+          title: plan.title,
+          when: plan.recommendedDate,
+          details: [plan.recommendedTimeWindow ? `Suggested window: ${plan.recommendedTimeWindow}.` : undefined, plan.logisticsNote].filter(Boolean).join(' '),
+          status: plan.status,
+          why: plan.why,
+          nextStep: plan.nextStep,
+          sourceIds: plan.sourceIds,
+        })
+        summary.push(`Added booking/reminder card for ${plan.title}.`)
+      }
+      if (addChecklist(next, `Confirm ${plan.title}`, 'Must-dos', plan.logisticsNote ?? plan.nextStep)) summary.push(`Added checklist item for ${plan.title}.`)
+      if (plan.packingImplication && addPacking(next, `${plan.title} packing check`, 'Activity-specific', plan.packingImplication)) summary.push(`Added packing check for ${plan.title}.`)
+    }
+    if (miniPlans.length === 0) warnings.push('No saved must-do mini-plans were available on this trip yet.')
+  }
+
+  if (action === 'logistics-notes') {
+    for (const plan of miniPlans) {
+      if (!plan.logisticsNote) continue
+      let updated = false
+      for (const day of next.itinerary) {
+        for (const item of day.items) {
+          if (!item.title.toLowerCase().includes(plan.title.toLowerCase().split(':')[0])) continue
+          item.notes = [item.notes, plan.logisticsNote].filter(Boolean).join(' ')
+          item.nextStep = item.nextStep ?? plan.nextStep
+          item.sourceIds = item.sourceIds ?? plan.sourceIds
+          updated = true
+        }
+      }
+      if (updated) summary.push(`Added logistics note to itinerary item for ${plan.title}.`)
+      if (addChecklist(next, `Confirm logistics for ${plan.title}`, 'Logistics', plan.logisticsNote)) summary.push(`Added logistics checklist item for ${plan.title}.`)
+    }
+    if (miniPlans.length === 0) warnings.push('No saved mini-plans were available to attach logistics notes from.')
+  }
 
   if (action === 'fill-missing' || action === 'booking-reminders') {
     if (next.bookings.length === 0 && next.kind !== 'event') {

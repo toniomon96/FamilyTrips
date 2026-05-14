@@ -1,5 +1,7 @@
 # Travel Command Center Audit And Rebuild Spec
 
+Status note, 2026-05-14: this audit is intentionally preserved as the blunt product teardown that led to the command-center work. Some findings below have since been fixed or partially fixed: `/trips/new` now has richer intake, follow-up questions, review-before-accept, progress states, live research UAT, source refs, and command-center manage pages. Use `docs/TRIP_CREATION_FLOW.md` and `ROADMAP.md` for current operational truth.
+
 ## Why This Exists
 
 The current self-serve trip flow is useful infrastructure, but it is not yet the product promise Toni wants.

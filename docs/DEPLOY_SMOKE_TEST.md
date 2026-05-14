@@ -35,7 +35,9 @@ The Markdown report is the one to send Toni. The JSON report is for agents and C
 
 `npm run ready:production` is the fastest "can I send this?" check after a manual deploy. It intentionally treats missing `OPENAI_API_KEY` / research envs as a warning, not a failure, because the deterministic planner should still work. If those optional envs are absent, generated trips will be less research-aware.
 
-`npm run uat:ai-production` is intentionally separate from the normal suite because it may spend OpenAI tokens. It creates only `codex-uat-*` dynamic data, verifies source-aware output, and cleans up the row/deployment unless `UAT_KEEP_DATA=1` or `UAT_KEEP_DEPLOYMENT=1`.
+`npm run uat:ai-production` is intentionally separate from the normal suite because it may spend OpenAI tokens. It creates only `codex-uat-*` dynamic data, verifies source-aware output, and cleans up the row/deployment unless `UAT_KEEP_DATA=1` or `UAT_KEEP_DEPLOYMENT=1`. The recommended production posture is live research enabled and the experimental AI composer disabled with `TRIP_AI_PLANNER_ENABLED=0`.
+
+See `docs/TRIP_CREATION_FLOW.md` for the start-to-finish create-flow description and the latest proof-report paths.
 
 ## Routes
 
