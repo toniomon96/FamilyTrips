@@ -12,7 +12,7 @@ export const okc: Trip = {
 
   stay: {
     name: 'Home in Oklahoma City · Modern 3BR with hot tub',
-    address: '1127 Northwest 56th Street, Oklahoma City, OK 73118',
+    address: 'Shared privately in the group chat',
     checkIn: 'Thursday, May 28, 2026 · 4:00 PM',
     checkOut: 'Sunday, May 31, 2026 · 11:00 AM',
     amenities: [
@@ -25,8 +25,7 @@ export const okc: Trip = {
     notes:
       '3 nights · Thursday May 28 → Sunday May 31. ' +
       'Airbnb reservation was originally Fri–Sun; host extended the stay to start Thursday so we have an extra day.\n\n' +
-      '🅿️ Parking: in front of the house on the gravel, perpendicular to the gray stucco wall.\n' +
-      '🔑 Key: in an outlet box to the left of the front door, behind the vase planter.\n\n' +
+      'Parking and entry details are shared privately in the group chat before arrival.\n\n' +
       'House rules (from Airbnb):\n' +
       '• 6 guests maximum (we are 6 adults + Tatum as infant — within limits)\n' +
       '• No parties or events\n' +
@@ -36,9 +35,7 @@ export const okc: Trip = {
       '• Free cancellation before 4:00 PM on May 15\n' +
       '• Partial refund if cancelled before 4:00 PM on May 22\n\n' +
       'Airbnb Fri–Sun paid in full: $1,075.74. Thursday-night extension handled with the host — confirm amount.',
-    confirmation: 'HMMQ5TZATP',
     hostName: 'Nitin (OKC Airbnb Host)',
-    hostPhone: '+1 405 795 2119',
   },
 
   bookings: [
@@ -47,10 +44,9 @@ export const okc: Trip = {
       kind: 'stay',
       title: 'Airbnb — Home in Oklahoma City (3BR + hot tub)',
       details:
-        '1127 Northwest 56th Street, Oklahoma City, OK 73118 · Thu May 28 → Sun May 31 (3 nights, host-extended). ' +
+        'Address shared privately in the group chat · Thu May 28 → Sun May 31 (3 nights, host-extended). ' +
         'Check-in 4:00 PM Thu · Check-out 11:00 AM Sun · 6 guest max · Pets allowed. ' +
         'Fri–Sun paid $1,075.74 on Airbnb · Thursday extension via host (amount TBD).',
-      confirmation: 'HMMQ5TZATP',
       when: '2026-05-28',
     },
     {
@@ -96,8 +92,8 @@ export const okc: Trip = {
         {
           time: '4:00 PM',
           title: 'Check in at the Airbnb',
-          address: '1127 Northwest 56th Street, Oklahoma City, OK 73118',
-          notes: 'Key in outlet box to the left of the front door (behind vase planter). Park on gravel, perpendicular to the gray stucco wall.',
+          address: 'Address shared privately in the group chat',
+          notes: 'Parking and entry instructions are shared privately before arrival.',
         },
         { title: 'Unpack · grocery / Whole Foods run', notes: 'Trader Joe’s + Whole Foods are near the house (Classen Curve).' },
         { title: 'Easy dinner in / light evening', notes: 'Keep it chill — tomorrow is the celebration. Hot tub optional.' },
@@ -164,7 +160,7 @@ export const okc: Trip = {
     { id: 'td-wcws', name: 'Devon Park (USA Softball Hall of Fame Stadium)', category: 'Sports', address: '2801 NE 50th St, Oklahoma City, OK 73111', url: 'https://maps.google.com/?q=2801+NE+50th+St+Oklahoma+City', notes: 'Host of the Women’s College World Series. Our seats: Sec 19, Row H, Seats 34–39.' },
     { id: 'td-jones', name: 'The Jones Assembly', category: 'Restaurant', address: '901 N Broadway Ave, Oklahoma City, OK 73102', url: 'https://maps.google.com/?q=The+Jones+Assembly+Oklahoma+City', notes: 'Morgan’s birthday dinner on Friday.' },
     { id: 'td-bricktown', name: 'Bricktown', category: 'District', address: 'Bricktown, Oklahoma City, OK', url: 'https://maps.google.com/?q=Bricktown+Oklahoma+City', notes: 'Canal, restaurants, walkable. Good with the stroller. Perfect for the Friday night post-dinner walk.' },
-    { id: 'td-classen', name: 'Classen Curve & The Plaza District', category: 'Neighborhood', address: 'Classen Curve, Oklahoma City, OK', url: 'https://maps.google.com/?q=Classen+Curve+Oklahoma+City', notes: 'Walkable from the Airbnb — restaurants, shops, Whole Foods, Trader Joe’s.' },
+    { id: 'td-classen', name: 'Classen Curve & The Plaza District', category: 'Neighborhood', address: 'Classen Curve, Oklahoma City, OK', url: 'https://maps.google.com/?q=Classen+Curve+Oklahoma+City', notes: 'Near the stay — restaurants, shops, Whole Foods, Trader Joe’s.' },
     { id: 'td-pearls', name: 'Pearl’s Oyster Bar', category: 'Restaurant', address: 'Oklahoma City, OK', url: 'https://maps.google.com/?q=Pearls+Oyster+Bar+Oklahoma+City', notes: 'Right around the corner from the Airbnb. Easy Thursday or between-games option.' },
     { id: 'td-cowboy', name: 'National Cowboy & Western Heritage Museum', category: 'Museum', address: '1700 NE 63rd St, Oklahoma City, OK', url: 'https://nationalcowboymuseum.org/', notes: 'Close to Devon Park — easy to pair with a game.' },
     { id: 'td-memorial', name: 'Oklahoma City National Memorial & Museum', category: 'Memorial', address: '620 N Harvey Ave, Oklahoma City, OK', url: 'https://memorialmuseum.com/' },
@@ -172,27 +168,27 @@ export const okc: Trip = {
   ],
 
   people: [
-    { id: 'p-toni', name: 'Toni Montez', role: 'Organizer · birthday husband', phone: '+1 469 371 9091' },
-    { id: 'p-morgan', name: 'Morgan Montez', role: 'Birthday girl (turning 25) 🎂', phone: '+1 256 727 2388' },
+    { id: 'p-toni', name: 'Toni Montez', role: 'Organizer · birthday husband' },
+    { id: 'p-morgan', name: 'Morgan Montez', role: 'Birthday girl (turning 25) 🎂' },
     { id: 'p-tatum', name: 'Tatum Montez', role: 'Daughter (infant)' },
-    { id: 'p-tony', name: 'Tony Montez', role: 'Dad', phone: '+1 469 865 0500' },
-    { id: 'p-leah', name: 'Leah Montez', role: 'Mom', phone: '+1 214 475 1376' },
-    { id: 'p-mark', name: 'Mark Goodwin', role: 'Father-in-law', phone: '+1 256 595 2643' },
-    { id: 'p-laura', name: 'Laura Goodwin', role: 'Mother-in-law', phone: '+1 256 595 1636' },
+    { id: 'p-tony', name: 'Tony Montez', role: 'Dad' },
+    { id: 'p-leah', name: 'Leah Montez', role: 'Mom' },
+    { id: 'p-mark', name: 'Mark Goodwin', role: 'Father-in-law' },
+    { id: 'p-laura', name: 'Laura Goodwin', role: 'Mother-in-law' },
   ],
 
   contacts: [
     { id: 'c-emerg', label: 'Emergency (US)', value: '911', kind: 'phone' },
-    { id: 'c-host', label: 'Airbnb host — Nitin', value: '+1 405 795 2119', kind: 'phone', notes: 'Reservation HMMQ5TZATP.' },
+    { id: 'c-host', label: 'Airbnb host — Nitin', value: 'Contact details shared privately in the group chat', kind: 'text' },
     { id: 'c-devon', label: 'Devon Park (USA Softball Hall of Fame Stadium)', value: 'https://maps.google.com/?q=2801+NE+50th+St+Oklahoma+City', kind: 'url', notes: '2801 NE 50th St, Oklahoma City, OK 73111.' },
     { id: 'c-jones', label: 'The Jones Assembly', value: 'https://maps.google.com/?q=The+Jones+Assembly+Oklahoma+City', kind: 'url', notes: '901 N Broadway Ave, Oklahoma City, OK 73102.' },
   ],
 
   checklist: [
     // Stay
-    { id: 'ck-st-1', title: 'Book Airbnb', category: 'Stay', done: true, notes: '3BR + hot tub · 1127 NW 56th St · HMMQ5TZATP · paid $1,075.74 for Fri–Sun.' },
+    { id: 'ck-st-1', title: 'Book Airbnb', category: 'Stay', done: true, notes: '3BR + hot tub · address and confirmation stored privately · paid $1,075.74 for Fri–Sun.' },
     { id: 'ck-st-2', title: 'Confirm Thursday-night extension with Nitin', category: 'Stay', done: true, notes: 'Host extended to start Thursday. Confirm final amount + any change to check-in process.' },
-    { id: 'ck-st-3', title: 'Share address + key + parking instructions with the group', category: 'Stay', done: false, notes: 'Parking: gravel in front, perpendicular to gray stucco wall. Key: outlet box left of front door (behind vase planter).' },
+    { id: 'ck-st-3', title: 'Share private address, entry, and parking instructions with the group', category: 'Stay', done: false, notes: 'Keep exact access details in the group chat, not the public planner.' },
     { id: 'ck-st-4', title: 'Save Nitin (host) as a contact', category: 'Stay', done: true },
     { id: 'ck-st-5', title: 'Reminder: last free-cancel 4 PM May 15 (partial until 4 PM May 22)', category: 'Stay', done: false },
     { id: 'ck-st-6', title: 'Pack & play / crib for Tatum at the Airbnb', category: 'Stay', done: false },
@@ -239,7 +235,7 @@ export const okc: Trip = {
 
   packing: [
     { id: 'pk-docs-id', title: 'Photo IDs', category: 'Travel docs', quantity: 'Adults' },
-    { id: 'pk-docs-airbnb', title: 'Airbnb confirmation and key instructions', category: 'Travel docs' },
+    { id: 'pk-docs-airbnb', title: 'Airbnb confirmation and private entry instructions', category: 'Travel docs' },
     { id: 'pk-docs-tickets', title: 'WCWS tickets saved to phones', category: 'Travel docs' },
     { id: 'pk-clothes-weekend', title: 'Weekend outfits', category: 'Clothes', quantity: '3 days' },
     { id: 'pk-clothes-game', title: 'Game-day clothes', category: 'Clothes', notes: 'Comfortable for Devon Park.' },
@@ -267,7 +263,7 @@ export const okc: Trip = {
       name: 'Airbnb — Fri–Sun (paid)',
       total: 1075.74,
       splitCount: 6,
-      notes: '3BR + hot tub · 2 Airbnb nights · HMMQ5TZATP · already paid. Split 6 adults ≈ $179/person.',
+      notes: '3BR + hot tub · 2 Airbnb nights · confirmation stored privately · already paid. Split 6 adults ≈ $179/person.',
     },
     { id: 'b-stay-ext', name: 'Airbnb — Thursday extension (host)', total: 0, splitCount: 6, status: 'tbd', notes: 'Extra night added by the host. Update total once confirmed with Nitin.' },
     { id: 'b-tix', name: 'WCWS tickets — Session 4 (purchased)', total: 0, splitCount: 6, status: 'tbd', notes: '6 admissions · Sec 19, Row H, Seats 34–39. Update with actual paid amount.' },

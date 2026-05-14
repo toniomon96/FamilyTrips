@@ -63,6 +63,72 @@ async function screenshot(page, name) {
   screenshots.push(filePath)
 }
 
+async function assertNoSensitivePublicText(page, label) {
+  const bodyText = await page.locator('body').innerText()
+  const sensitivePatterns = [
+    /\+1\s*\d{3}[\s.-]*\d{3}[\s.-]*\d{4}/,
+    /\b(?:HMM[A-Z0-9]{5,}|RES-\d{3,}|C\d{8,}|210838\d*)\b/i,
+    /\bpassword:\s*\S+/i,
+    /\b(?:key in|outlet box|behind (?:the )?vase|door code|gate code|access code)\b/i,
+    /\b(?:1127\s+Northwest|2718\s+Gulf|1771\s+Dixon|109\s+Genovese)\b/i,
+  ]
+  const hit = sensitivePatterns.find((pattern) => pattern.test(bodyText))
+  if (hit) throw new Error(`${label} rendered sensitive public text matching ${hit}.`)
+}
+
+async function checkAccessibilityBasics(page, viewport) {
+  const issues = await page.evaluate((isMobile) => {
+    function isVisible(element) {
+      const style = window.getComputedStyle(element)
+      const rect = element.getBoundingClientRect()
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0
+    }
+
+    const found = []
+    for (const control of Array.from(document.querySelectorAll('input, select, textarea'))) {
+      if (!(control instanceof HTMLElement) || !isVisible(control)) continue
+      if (control instanceof HTMLInputElement && (control.type === 'hidden' || control.type === 'checkbox' || control.type === 'radio')) continue
+      if (control.getAttribute('tabindex') === '-1') continue
+      const labels = 'labels' in control ? control.labels : null
+      const hasName = Boolean(
+        labels?.length ||
+        control.getAttribute('aria-label') ||
+        control.getAttribute('aria-labelledby') ||
+        control.getAttribute('title') ||
+        control.getAttribute('placeholder')
+      )
+      if (!hasName) found.push(`Unlabeled ${control.tagName.toLowerCase()}`)
+    }
+
+    for (const tab of Array.from(document.querySelectorAll('[role="tab"]'))) {
+      if (!(tab instanceof HTMLElement) || !isVisible(tab)) continue
+      if (!tab.hasAttribute('aria-selected')) found.push('Tab missing aria-selected')
+    }
+
+    for (const pressed of Array.from(document.querySelectorAll('button[aria-pressed]'))) {
+      if (!(pressed instanceof HTMLElement) || !isVisible(pressed)) continue
+      const value = pressed.getAttribute('aria-pressed')
+      if (value !== 'true' && value !== 'false') found.push('Toggle button has invalid aria-pressed')
+    }
+
+    if (isMobile) {
+      for (const control of Array.from(document.querySelectorAll('button, input:not([type="checkbox"]):not([type="radio"]), select, textarea'))) {
+        if (!(control instanceof HTMLElement) || !isVisible(control)) continue
+        if (control.getAttribute('tabindex') === '-1') continue
+        const rect = control.getBoundingClientRect()
+        if (rect.width < 28 || rect.height < 28) {
+          const label = control.innerText || control.getAttribute('aria-label') || control.getAttribute('name') || control.tagName.toLowerCase()
+          found.push(`Small mobile target: ${label.trim().slice(0, 40)} (${Math.round(rect.width)}x${Math.round(rect.height)})`)
+        }
+      }
+    }
+
+    return found
+  }, viewport.width <= 480)
+
+  if (issues.length > 0) throw new Error(`Accessibility basics failed: ${issues.slice(0, 8).join(' | ')}`)
+}
+
 async function runStep(name, fn) {
   try {
     await fn()
@@ -99,6 +165,7 @@ async function withCheckedPage(browser, name, viewport, fn) {
       Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - document.documentElement.clientWidth
     ))
     if (horizontalOverflow > 2) throw new Error(`Horizontal overflow detected: ${horizontalOverflow}px.`)
+    await checkAccessibilityBasics(page, viewport)
     if (pageErrors.length > 0) throw new Error(`Page runtime errors: ${pageErrors.join(' | ')}`)
     if (consoleErrors.length > 0) throw new Error(`Console errors: ${consoleErrors.join(' | ')}`)
   } finally {
@@ -147,7 +214,9 @@ async function testTripsNewModes(browser) {
         await expect(page.locator('header').getByRole('button', { name: 'Build my plan' })).toBeVisible()
         await page.getByRole('button', { name: 'Start blank' }).click()
         await expect(page.locator('header').getByRole('button', { name: 'Start blank' })).toHaveClass(/bg-white/)
+        await expect(page.locator('header').getByRole('button', { name: 'Start blank' })).toHaveAttribute('aria-pressed', 'true')
         await page.locator('header').getByRole('button', { name: 'Build my plan' }).click()
+        await expect(page.locator('header').getByRole('button', { name: 'Build my plan' })).toHaveAttribute('aria-pressed', 'true')
         await expect(page.getByText('Start with the essentials')).toBeVisible()
         await expect(page.getByText('Toni shares this with trusted family and friends')).toBeVisible()
         const bodyText = await page.locator('body').innerText()
@@ -186,6 +255,27 @@ async function testStaticAndEventManageCopy(browser) {
   })
 }
 
+async function testPublicRouteMatrix(browser) {
+  const routes = [
+    { path: '/okc', heading: /Morgan/i },
+    { path: '/stpete', heading: /St\. Pete/i },
+    { path: '/logan-bachelor', heading: /Logan/i },
+    { path: '/family-cookout', heading: /Family Cookout/i },
+    { path: '/mothers-day-2026', heading: /^Mother's Day weekend command center$/i },
+  ]
+
+  for (const route of routes) {
+    await runStep(`browser.public-route.${safeName(route.path || 'home')}.mobile`, async () => {
+      await withCheckedPage(browser, `public-route-${safeName(route.path)}-mobile`, { width: 390, height: 844 }, async (page) => {
+        await page.goto(`${baseUrl}${route.path}`, { waitUntil: 'domcontentloaded' })
+        await expect(page.getByRole('heading', { name: route.heading })).toBeVisible({ timeout: 45000 })
+        await assertNoSensitivePublicText(page, route.path)
+        await screenshot(page, `public-route-${safeName(route.path)}-mobile`)
+      })
+    })
+  }
+}
+
 async function testGeneratedRoutes(browser) {
   const viewports = [
     { label: 'mobile', viewport: { width: 390, height: 844 } },
@@ -199,6 +289,7 @@ async function testGeneratedRoutes(browser) {
         await expect(page.getByRole('heading', { name: new RegExp(generatedTripName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') })).toBeVisible({
           timeout: 45000,
         })
+        await assertNoSensitivePublicText(page, `/${generatedSlug}`)
         await screenshot(page, `generated-trip-${label}`)
       })
     })
@@ -330,6 +421,7 @@ async function main() {
   try {
     if (requestedChecks.has('render')) {
       await testTripsNewModes(browser)
+      await testPublicRouteMatrix(browser)
       await testGeneratedRoutes(browser)
       await testStaticAndEventManageCopy(browser)
     }

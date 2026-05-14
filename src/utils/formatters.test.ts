@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { listTripsSorted } from '../data/trips'
 import type { BudgetItem, Day, EventFoodItem, PackingItem, Trip } from '../types/trip'
-import { rowsToStateMap } from '../hooks/useChecklistState'
+import { mergeChecklistStateMaps, rowsToStateMap } from '../hooks/useChecklistState'
 import {
   daysUntil,
   formatBudget,
@@ -193,6 +193,22 @@ describe('checklist state helpers', () => {
 
     expect(stale.get('packing:pk-docs-id')?.done).toBe(true)
     expect(next.has('packing:pk-docs-id')).toBe(false)
+  })
+
+  it('preserves newer optimistic checklist rows when initial sync returns later', () => {
+    const optimistic = rowsToStateMap([
+      { item_id: 'ck-golf', done: true, updated_at: '2026-05-14T12:00:01.000Z', actor_id: 'logan' },
+    ])
+    const initialServerRows = rowsToStateMap([
+      { item_id: 'ck-golf', done: false, updated_at: '2026-05-14T12:00:00.000Z', actor_id: null },
+      { item_id: 'ck-horseback', done: true, updated_at: '2026-05-14T12:00:00.000Z', actor_id: 'morgan' },
+    ])
+
+    const merged = mergeChecklistStateMaps(optimistic, initialServerRows)
+
+    expect(merged.get('ck-golf')?.done).toBe(true)
+    expect(merged.get('ck-golf')?.actor_id).toBe('logan')
+    expect(merged.get('ck-horseback')?.done).toBe(true)
   })
 })
 

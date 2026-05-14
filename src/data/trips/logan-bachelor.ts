@@ -12,7 +12,7 @@ export const loganBachelor: Trip = {
 
   stay: {
     name: "Logan's Crib",
-    address: '1771 Dixon Circle, Mt. Olive, Alabama 35117',
+    address: 'Shared privately with the bachelor group',
     checkIn: 'Thursday, May 21, 2026 - arrival around 2:00 AM',
     checkOut: 'Sunday, May 24, 2026 - head out after brunch',
     amenities: [
@@ -32,7 +32,7 @@ export const loganBachelor: Trip = {
       kind: 'stay',
       title: "Logan's Crib",
       details:
-        'Home base at 1771 Dixon Circle, Mt. Olive, AL 35117. Arrival expected late Thursday / early Friday depending on Braden practice and group travel.',
+        'Home base address shared privately with the bachelor group. Arrival expected late Thursday / early Friday depending on Braden practice and group travel.',
       when: '2026-05-21',
     },
     {
@@ -89,7 +89,7 @@ export const loganBachelor: Trip = {
         {
           time: '2:00 AM',
           title: 'Arrive in Birmingham / Mt. Olive',
-          address: '1771 Dixon Circle, Mt. Olive, Alabama 35117',
+          address: 'Address shared privately with the bachelor group',
           notes: "Late arrival at Logan's crib.",
         },
       ],
@@ -310,9 +310,9 @@ export const loganBachelor: Trip = {
     {
       id: 'c-stay-map',
       label: "Logan's Crib - map",
-      value: 'https://maps.google.com/?q=1771+Dixon+Circle+Mt+Olive+AL+35117',
-      kind: 'url',
-      notes: 'Direct map link for the home base.',
+      value: 'Address shared privately with the bachelor group',
+      kind: 'text',
+      notes: 'Direct map link stays outside the public planner.',
     },
   ],
 

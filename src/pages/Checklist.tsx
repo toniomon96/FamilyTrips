@@ -49,7 +49,7 @@ function ActorBadge({
       <button
         type="button"
         onClick={onSwitch}
-        className="text-blue-700 underline underline-offset-2"
+        className="inline-flex min-h-8 items-center rounded-full px-2 -my-1 text-blue-700 underline underline-offset-2"
       >
         switch
       </button>

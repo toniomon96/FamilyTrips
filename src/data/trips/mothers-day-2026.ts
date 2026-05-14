@@ -13,7 +13,7 @@ export const mothersDay2026: Trip = {
 
   stay: {
     name: 'Our house',
-    address: '109 Genovese Dr, McKinney, TX 75071',
+    address: 'Shared privately with the family',
     checkIn: 'Sunday, May 10, 2026 · 2:00 PM cookout starts',
     checkOut: 'Sunday, May 10, 2026 · Evening wind down',
     amenities: ['Backyard', 'Grill', 'Outdoor seating', 'Cooler', 'Speaker', 'Family games'],
@@ -85,7 +85,7 @@ export const mothersDay2026: Trip = {
         {
           time: '2:00 PM',
           title: 'Cookout starts',
-          address: '109 Genovese Dr, McKinney, TX 75071',
+          address: 'Address shared privately with the family',
           notes: 'Family arrives. Eat, hang out, and play whatever games the moms pick.',
         },
         {
@@ -229,7 +229,7 @@ export const mothersDay2026: Trip = {
     {
       id: 'copy-cookout',
       title: 'Cookout summary',
-      body: "Mother's Day cookout Sunday May 10 at 2:00 PM at 109 Genovese Dr, McKinney, TX 75071. Dad is bringing butcher burger patties and sausage/brats. Toni has hot dogs, banana pudding, chips, dip, setup, grill, drinks, and cleanup.",
+      body: "Mother's Day cookout Sunday May 10 at 2:00 PM. Address is shared privately with the family. Dad is bringing butcher burger patties and sausage/brats. Toni has hot dogs, banana pudding, chips, dip, setup, grill, drinks, and cleanup.",
     },
   ],
 

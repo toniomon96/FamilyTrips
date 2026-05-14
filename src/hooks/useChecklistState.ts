@@ -77,6 +77,20 @@ export function rowsToStateMap(
   return next
 }
 
+export function mergeChecklistStateMaps(
+  current: Map<string, ChecklistStateEntry>,
+  incoming: Map<string, ChecklistStateEntry>,
+): Map<string, ChecklistStateEntry> {
+  let next = current
+  for (const [itemId, row] of incoming.entries()) {
+    const existing = next.get(itemId)
+    if (existing && existing.updated_at >= row.updated_at) continue
+    if (next === current) next = new Map(current)
+    next.set(itemId, row)
+  }
+  return next
+}
+
 function mergeRow(
   prev: Map<string, ChecklistStateEntry>,
   row: Pick<ChecklistStateRow, 'item_id' | 'done' | 'updated_at' | 'actor_id'>,
@@ -170,7 +184,17 @@ export function useChecklistState(tripSlug: string, actorId: string | null): Tog
           setStatus('offline')
           return
         }
-        setRowState({ tripSlug, rows: rowsToStateMap((data ?? []) as ChecklistStateRow[]) })
+        const fetchedRows = rowsToStateMap((data ?? []) as ChecklistStateRow[])
+        setRowState((prev) => {
+          const hasPendingWrite = inFlight.current.size > 0 || writesOutstanding.current > 0
+          const currentRows = prev.tripSlug === tripSlug ? prev.rows : new Map()
+          return {
+            tripSlug,
+            rows: hasPendingWrite
+              ? mergeChecklistStateMaps(currentRows, fetchedRows)
+              : fetchedRows,
+          }
+        })
       })
 
     return () => {

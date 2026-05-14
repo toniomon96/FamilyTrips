@@ -86,6 +86,7 @@ function markdown(report) {
 }
 
 const gitStatus = run('git status', 'git', ['status', '--porcelain'])
+const privacyScan = run('privacy scan', 'npm', ['run', 'privacy:scan'])
 const vercelEnv = run('Vercel env list', 'vercel', ['env', 'ls'])
 const productionSmoke = run('production UAT smoke', 'npm', ['run', 'uat:production'])
 const inspect = run('Vercel production inspect', 'vercel', ['inspect', productionUrl])
@@ -98,6 +99,7 @@ const failures = []
 
 if (!gitStatus.ok) failures.push('Could not read git status.')
 if (gitStatus.ok && gitStatus.stdout.length > 0) warnings.push('Working tree has local changes.')
+if (!privacyScan.ok) failures.push('Privacy scan failed.')
 if (!vercelEnv.ok) failures.push('Could not list Vercel environment variables.')
 if (missingRequired.length > 0) failures.push(`Missing required production env names: ${missingRequired.join(', ')}.`)
 if (missingOptionalResearch.length > 0) warnings.push(`Live AI research is not fully configured: ${missingOptionalResearch.join(', ')}.`)
@@ -119,7 +121,7 @@ const report = {
     missingRequired,
     missingOptionalResearch,
   },
-  checks: [gitStatus, vercelEnv, productionSmoke, inspect].map(({ label, command, status, ok }) => ({ label, command, status, ok })),
+  checks: [gitStatus, privacyScan, vercelEnv, productionSmoke, inspect].map(({ label, command, status, ok }) => ({ label, command, status, ok })),
   warnings,
   failures,
 }

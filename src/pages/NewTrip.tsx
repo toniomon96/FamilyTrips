@@ -433,10 +433,20 @@ export default function NewTrip() {
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2 rounded-2xl bg-white/10 p-1">
-            <button type="button" onClick={() => switchMode('smart')} className={`rounded-xl px-3 py-2 text-sm font-semibold ${mode === 'smart' ? 'bg-white text-slate-950' : 'text-white'}`}>
+            <button
+              type="button"
+              aria-pressed={mode === 'smart'}
+              onClick={() => switchMode('smart')}
+              className={`rounded-xl px-3 py-2 text-sm font-semibold ${mode === 'smart' ? 'bg-white text-slate-950' : 'text-white'}`}
+            >
               Build my plan
             </button>
-            <button type="button" onClick={() => switchMode('blank')} className={`rounded-xl px-3 py-2 text-sm font-semibold ${mode === 'blank' ? 'bg-white text-slate-950' : 'text-white'}`}>
+            <button
+              type="button"
+              aria-pressed={mode === 'blank'}
+              onClick={() => switchMode('blank')}
+              className={`rounded-xl px-3 py-2 text-sm font-semibold ${mode === 'blank' ? 'bg-white text-slate-950' : 'text-white'}`}
+            >
               Start blank
             </button>
           </div>

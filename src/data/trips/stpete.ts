@@ -15,7 +15,7 @@ export const stpete: Trip = {
 
   stay: {
     name: 'Exclusive Isla Bonita',
-    address: '2718 Gulf Blvd, Indian Rocks Beach, FL',
+    address: 'Shared privately with the group',
     checkIn: 'September 3, 2026 · 4:00 PM',
     checkOut: 'September 8, 2026 · 10:00 AM',
     wifiSsid: 'TBD',
@@ -51,9 +51,7 @@ export const stpete: Trip = {
       'Total $3,547.50 · $1,182.50 per share if split 3 ways. If Mikayla + Courtney come, split 4 ways = $886.88/share.\n' +
       '$1,110 paid · $2,437.50 remaining (due Aug 4, 2026).',
     bookingLink: 'https://www.beachtimerentals.com/clearwater-vacation-rentals/exclusive-isla-bonita',
-    confirmation: 'RES-21753',
     hostName: 'Beach Time Rentals Suncoast',
-    hostPhone: '+1 727 565 2958',
   },
 
   bookings: [
@@ -62,10 +60,9 @@ export const stpete: Trip = {
       kind: 'stay',
       title: 'Beach Time rental — Exclusive Isla Bonita',
       details:
-        '2718 Gulf Blvd, Indian Rocks Beach, FL · Sept 3 → 8 (5 nights) · ' +
-        'Check-in 4:00 PM · Check-out 10:00 AM · 4BR / 3.5BA · Max 12 guests · 2-car parking · RES-21753',
+        'Address shared privately with the group · Sept 3 → 8 (5 nights) · ' +
+        'Check-in 4:00 PM · Check-out 10:00 AM · 4BR / 3.5BA · Max 12 guests · 2-car parking.',
       link: 'https://www.beachtimerentals.com/clearwater-vacation-rentals/exclusive-isla-bonita',
-      confirmation: 'RES-21753',
       when: '2026-09-03',
     },
     {
@@ -89,9 +86,8 @@ export const stpete: Trip = {
         'Ford Expedition Max, Jeep Wagoneer L, or similar large SUV · 8 passengers / 7 bags. ' +
         'Pickup: Sept 3, 2026 10:00 AM at Tampa International Airport, 5405 Airport Service Rd, Tampa, FL 33607. ' +
         'Drop-off: Sept 8, 2026 1:00 PM at TPA. Total $376.93; $0.00 paid; balance due at agency. ' +
-        'Costco confirmation C490070586 · Enterprise confirmation 2108382841. ' +
+        'Confirmation details stored privately. ' +
         'Unlimited mileage · Additional driver included · No cancellation fees.',
-      confirmation: 'Costco C490070586 · Enterprise 2108382841',
       when: '2026-09-03',
     },
     {
@@ -134,7 +130,7 @@ export const stpete: Trip = {
       items: [
         { title: 'Mark & Laura drive in from Cullman, AL', notes: '~11 hr drive. Share ETA in the group chat.' },
         { time: '7:05 AM', title: 'Toni, Morgan, Tatum, Leah, Tony fly into TPA on AA 2516', notes: 'American Airlines flight 2516 to Tampa. Enterprise rental is reserved for 10:00 AM at Tampa International.' },
-        { time: '4:00 PM', title: 'Check in at Exclusive Isla Bonita', address: '2718 Gulf Blvd, Indian Rocks Beach, FL', notes: 'Two cars at the property: the rental + Mark & Laura’s car. No room for a third.' },
+        { time: '4:00 PM', title: 'Check in at Exclusive Isla Bonita', address: 'Address shared privately with the group', notes: 'Two cars at the property: the rental + Mark & Laura’s car. No room for a third.' },
         { title: 'Welcome dinner at the house', notes: 'Grocery run after check-in. Starter toiletries only — bring your own.' },
       ],
     },
@@ -190,7 +186,7 @@ export const stpete: Trip = {
       items: [
         { time: '8:00 AM', title: 'Pack up and tidy · take out trash' },
         { time: '10:00 AM', title: 'Check out' },
-        { time: '1:00 PM', title: 'Drop off rental car at TPA', notes: 'Enterprise reservation 2108382841 is pay-later; $376.93 due at the agency unless prepaid/changed later.' },
+        { time: '1:00 PM', title: 'Drop off rental car at TPA', notes: 'Rental confirmation is stored privately; $376.93 due at the agency unless prepaid/changed later.' },
         { time: '3:52 PM', title: 'Toni, Morgan, and Tatum fly to Dallas on AA 1957', notes: 'Leah and Tony return separately the same day; details are not tracked here.' },
       ],
     },
@@ -207,25 +203,25 @@ export const stpete: Trip = {
   ],
 
   people: [
-    { id: 'p-toni', name: 'Toni Montez', role: 'Organizer', phone: '+1 469 371 9091' },
-    { id: 'p-morgan', name: 'Morgan Montez', role: 'Wife', phone: '+1 256 727 2388' },
+    { id: 'p-toni', name: 'Toni Montez', role: 'Organizer' },
+    { id: 'p-morgan', name: 'Morgan Montez', role: 'Wife' },
     { id: 'p-tatum', name: 'Tatum Montez', role: 'Daughter (infant)' },
-    { id: 'p-leah', name: 'Leah Montez', role: 'Mom', phone: '+1 214 475 1376' },
-    { id: 'p-tony', name: 'Tony Montez', role: 'Dad', phone: '+1 469 865 0500' },
-    { id: 'p-laura', name: 'Laura Goodwin', role: 'Mother-in-law · Tatum care on wedding day', phone: '+1 256 595 1636' },
-    { id: 'p-mark', name: 'Mark Goodwin', role: 'Father-in-law · Tatum care on wedding day', phone: '+1 256 595 2643' },
-    { id: 'p-mikayla', name: 'Mikayla Goodwin', role: 'Sister-in-law · Tentative · Tatum care on wedding day', phone: '+1 256 735 9353' },
+    { id: 'p-leah', name: 'Leah Montez', role: 'Mom' },
+    { id: 'p-tony', name: 'Tony Montez', role: 'Dad' },
+    { id: 'p-laura', name: 'Laura Goodwin', role: 'Mother-in-law · Tatum care on wedding day' },
+    { id: 'p-mark', name: 'Mark Goodwin', role: 'Father-in-law · Tatum care on wedding day' },
+    { id: 'p-mikayla', name: 'Mikayla Goodwin', role: 'Sister-in-law · Tentative · Tatum care on wedding day' },
     { id: 'p-courtney', name: 'Courtney', role: 'Tentative · Tatum care on wedding day' },
   ],
 
   contacts: [
     { id: 'c-emerg', label: 'Emergency (US)', value: '911', kind: 'phone' },
-    { id: 'c-couple', label: 'Tyler & Yui — wedding site', value: 'https://www.zola.com/wedding/yuiandtyler', kind: 'url', notes: 'Password: momo' },
-    { id: 'c-rental-text', label: 'Beach Time Rentals — text line', value: '+1 727 565 2958', kind: 'phone', notes: 'Reservation RES-21753. Preferred for quick questions.' },
-    { id: 'c-rental-office', label: 'Beach Time Rentals — office', value: '+1 800 691 8183', kind: 'phone' },
+    { id: 'c-couple', label: 'Tyler & Yui — wedding site', value: 'https://www.zola.com/wedding/yuiandtyler', kind: 'url', notes: 'Wedding site access details are shared privately.' },
+    { id: 'c-rental-text', label: 'Beach Time Rentals — contact', value: 'Use booking email or rental portal; confirmation stored privately.', kind: 'text' },
+    { id: 'c-rental-office', label: 'Beach Time Rentals — website', value: 'https://www.beachtimerentals.com/', kind: 'url' },
     { id: 'c-rental-email', label: 'Beach Time Rentals — email', value: 'customerservice@beachtimerentals.com', kind: 'text' },
-    { id: 'c-airport', label: 'Tampa International Airport', value: '+1 813 870 8700', kind: 'phone' },
-    { id: 'c-enterprise-tpa', label: 'Enterprise TPA rental counter', value: '+1 833 892 9213', kind: 'phone', notes: '5405 Airport Service Rd, Tampa, FL 33607 · 24 hours.' },
+    { id: 'c-airport', label: 'Tampa International Airport', value: 'https://www.tampaairport.com/', kind: 'url' },
+    { id: 'c-enterprise-tpa', label: 'Enterprise TPA rental counter', value: 'https://www.enterprise.com/', kind: 'url', notes: '5405 Airport Service Rd, Tampa, FL 33607 · 24 hours.' },
   ],
 
   checklist: [
@@ -233,7 +229,7 @@ export const stpete: Trip = {
     { id: 'ck-fl-1', title: 'Book outbound flights', category: 'Flights', done: true, notes: 'Toni, Morgan, Tatum, Leah, and Tony fly to Tampa together on American Airlines flight 2516. Mark & Laura driving.' },
     { id: 'ck-fl-2', title: 'Record Toni + Morgan + Tatum return flight', category: 'Flights', done: true, notes: 'Toni, Morgan, and Tatum return to Dallas on American Airlines flight 1957 at 3:52 PM.' },
     { id: 'ck-fl-3', title: 'Note Leah + Tony return separately', category: 'Flights', done: true, notes: 'They return Sept 8 separately from Toni/Morgan/Tatum. Details are intentionally not tracked here.' },
-    { id: 'ck-fl-4', title: 'Add American Airlines confirmation numbers', category: 'Flights', done: false, notes: 'Need confirmation numbers for AA 2516 and AA 1957 if we want them in the site.' },
+    { id: 'ck-fl-4', title: 'Store American Airlines confirmation numbers privately', category: 'Flights', done: false, notes: 'Keep private confirmation numbers outside the public planner.' },
     { id: 'ck-fl-5', title: 'Select seats (sit together + near grandparents)', category: 'Flights', done: false },
     { id: 'ck-fl-6', title: 'Confirm Tatum infant ticket both ways', category: 'Flights', done: true, notes: 'Tatum is flying with Toni and Morgan both ways.' },
     { id: 'ck-fl-7', title: 'Download airline apps + boarding passes', category: 'Flights', done: false },
@@ -242,15 +238,15 @@ export const stpete: Trip = {
     // Stay
     { id: 'ck-st-1', title: 'Confirm Beach Time rental booking', category: 'Stay', done: true },
     { id: 'ck-st-2', title: 'Make final $2,437.50 payment (due Aug 4)', category: 'Stay', done: false },
-    { id: 'ck-st-3', title: 'Get entry codes from Beach Time Rentals', category: 'Stay', done: false, notes: 'Check-in confirmed for 4:00 PM Sept 3 · codes usually emailed a few days prior.' },
+    { id: 'ck-st-3', title: 'Get private entry details from Beach Time Rentals', category: 'Stay', done: false, notes: 'Check-in confirmed for 4:00 PM Sept 3 · keep private access details outside the public planner.' },
     { id: 'ck-st-4', title: 'Confirm final bed and cost-share plan', category: 'Stay', done: false, notes: 'Base split is 3 shares: Toni/Morgan, Leah/Tony, Mark/Laura. If Mikayla + Courtney come, split the place 4 ways.' },
     { id: 'ck-st-5', title: 'Confirm pack & play / crib', category: 'Stay', done: false },
-    { id: 'ck-st-6', title: 'Share address + Wi-Fi with everyone', category: 'Stay', done: false, notes: 'Address: 2718 Gulf Blvd, Indian Rocks Beach · Wi-Fi arrives with check-in info.' },
+    { id: 'ck-st-6', title: 'Share private address and Wi-Fi with everyone', category: 'Stay', done: false, notes: 'Use the group chat for exact address and Wi-Fi details.' },
     { id: 'ck-st-7', title: 'Pack own toiletries (property only provides starter)', category: 'Stay', done: false },
 
     // Transport
     { id: 'ck-tr-1', title: 'Decide rental car count', category: 'Transport', done: true, notes: 'One rental at TPA for Toni/Morgan/Tatum + Leah/Tony. Mark & Laura driving their own.' },
-    { id: 'ck-tr-2', title: 'Reserve rental car', category: 'Transport', done: true, notes: 'Enterprise via Costco Travel · Costco C490070586 · Enterprise 2108382841 · Large SUV · pickup Sept 3 10:00 AM at TPA · drop-off Sept 8 1:00 PM · $376.93 due at agency.' },
+    { id: 'ck-tr-2', title: 'Reserve rental car', category: 'Transport', done: true, notes: 'Enterprise via Costco Travel · confirmation stored privately · Large SUV · pickup Sept 3 10:00 AM at TPA · drop-off Sept 8 1:00 PM · $376.93 due at agency.' },
     { id: 'ck-tr-3', title: 'Confirm infant car seat for the rental', category: 'Transport', done: false, notes: 'Screenshots do not show a car seat included; bring ours or add one with Enterprise before arrival.' },
     { id: 'ck-tr-4', title: 'Coordinate airport pickups', category: 'Transport', done: false, notes: 'Rental handles Toni/Morgan/Tatum/Leah/Tony. Mark & Laura arriving separately by car.' },
     { id: 'ck-tr-5', title: 'Share arrival/departure times in group chat', category: 'Transport', done: false },
@@ -272,7 +268,7 @@ export const stpete: Trip = {
     ...dogChecklistItems(),
 
     // Wedding
-    { id: 'ck-we-1', title: 'RSVP wedding attendees on Zola', category: 'Wedding', done: false, notes: 'Attending: Toni, Morgan, Leah, Tony. Mark, Laura, Mikayla/Courtney if present, and Tatum are not attending the wedding. zola.com/wedding/yuiandtyler · password: momo' },
+    { id: 'ck-we-1', title: 'RSVP wedding attendees on Zola', category: 'Wedding', done: false, notes: 'Attending: Toni, Morgan, Leah, Tony. Mark, Laura, Mikayla/Courtney if present, and Tatum are not attending the wedding. Wedding site access details are shared privately.' },
     { id: 'ck-we-2', title: 'Confirm ceremony & reception time + venue', category: 'Wedding', done: true, notes: 'Sun Sept 6 · 11:30 AM – 3:00 PM · Red Mesa Events · 128 3rd St S, St. Petersburg FL 33701' },
     { id: 'ck-we-3', title: 'Confirm dress code', category: 'Wedding', done: true, notes: 'Cocktail / business casual — brunch vibes.' },
     { id: 'ck-we-4', title: 'Wedding-day Tatum care plan', category: 'Wedding', done: true, notes: 'Mark, Laura, and Mikayla/Courtney if present watch Tatum at the house while Toni, Morgan, Leah, and Tony attend.' },
@@ -280,7 +276,7 @@ export const stpete: Trip = {
     { id: 'ck-we-6', title: 'Wedding card / gift optional', category: 'Wedding', done: false, notes: 'Leave as optional; do not include in the tracked trip budget.' },
 
     // Admin
-    { id: 'ck-ad-1', title: 'Save Beach Time Rentals contact', category: 'Admin', done: true, notes: 'RES-21753 · text 727 565 2958 · office 800 691 8183' },
+    { id: 'ck-ad-1', title: 'Save Beach Time Rentals contact privately', category: 'Admin', done: true, notes: 'Confirmation and direct contact details are stored outside the public planner.' },
     { id: 'ck-ad-2', title: 'Share emergency contact list', category: 'Admin', done: false, notes: 'Tap "Copy everyone" on the People page to paste into the group chat.' },
     { id: 'ck-ad-3', title: 'Sign Short Term Rental Agreement', category: 'Admin', done: false, notes: 'Adobe Acrobat Sign link emailed by Beach Time Rentals.' },
     { id: 'ck-ad-4', title: 'Confirm Sat Orlando visit plans with Dad', category: 'Admin', done: false, notes: 'Address, arrival time, cookout vs not. ~2 hr each way.' },
@@ -289,7 +285,7 @@ export const stpete: Trip = {
   packing: [
     { id: 'pk-docs-id', title: 'Photo IDs', category: 'Travel docs', quantity: 'Adults' },
     { id: 'pk-docs-flight', title: 'Flight confirmations / boarding passes', category: 'Travel docs' },
-    { id: 'pk-docs-wedding', title: 'Wedding invite / Zola details', category: 'Travel docs', notes: 'Password and venue details are in Contacts.' },
+    { id: 'pk-docs-wedding', title: 'Wedding invite / Zola details', category: 'Travel docs', notes: 'Private wedding-site access details are shared outside the public planner.' },
     { id: 'pk-clothes-outfits', title: 'Casual beach outfits', category: 'Clothes', quantity: '5 days' },
     { id: 'pk-clothes-sleep', title: 'Sleepwear', category: 'Clothes' },
     { id: 'pk-clothes-laundry', title: 'Laundry bag', category: 'Clothes' },
@@ -328,7 +324,7 @@ export const stpete: Trip = {
       splitCount: 2,
       status: 'confirmed',
       notes:
-        'Costco confirmation C490070586 · Enterprise confirmation 2108382841. Reserved now, pay later. $0.00 paid; $376.93 due at agency. Split between Toni/Morgan and Leah/Tony only; Mark/Laura excluded.',
+        'Confirmation details stored privately. Reserved now, pay later. $0.00 paid; $376.93 due at agency. Split between Toni/Morgan and Leah/Tony only; Mark/Laura excluded.',
     },
     { id: 'b-groceries', name: 'Groceries (estimate)', total: 300, splitCount: 6, status: 'estimate', notes: 'Placeholder — tune as we plan meals.' },
     { id: 'b-gift', name: 'Wedding gift (optional)', total: 0, splitCount: 1, status: 'tbd', notes: 'Optional; decide separately. Excluded from the tracked group total.' },

@@ -7,7 +7,7 @@ import {
   RequestGuardError,
 } from './_requestGuards.js'
 import { runTripCreateAction, type TripCreateStore } from '../src/server/tripActions.js'
-import type { Trip } from '../src/types/trip.js'
+import type { PlannerSourceRef, Trip } from '../src/types/trip.js'
 import { TRIP_OVERRIDE_SELECT, type TripOverrideHistoryRow, type TripOverrideRow } from '../src/utils/tripOverrides.js'
 import type {
   NormalizedTripGenerationBrief,
@@ -17,7 +17,6 @@ import type {
   TripResearcher,
   BriefQuality,
 } from '../src/utils/tripGeneration.js'
-import type { PlannerSourceKind } from '../src/types/trip.js'
 
 type JsonRequest = IncomingMessage & {
   body?: unknown
@@ -343,61 +342,50 @@ function parseAiTrip(value: unknown): Trip | null {
   return stripNulls(parsed.trip) as Trip
 }
 
-function researchResponseSchema(): Record<string, unknown> {
-  return {
-    type: 'object',
-    additionalProperties: false,
-    required: ['sourceRefs', 'insights', 'notes'],
-    properties: {
-      sourceRefs: {
-        type: 'array',
-        items: {
-          type: 'object',
-          additionalProperties: false,
-          required: ['id', 'title', 'url', 'kind', 'note'],
-          properties: {
-            id: { type: 'string' },
-            title: { type: 'string' },
-            url: nullableString(),
-            kind: { enum: ['official', 'user-provided', 'search', 'curated', 'inferred'] },
-            note: nullableString(),
-          },
-        },
-      },
-      insights: stringArray(),
-      notes: stringArray(),
-    },
+function collectSourceRefs(value: unknown, refs: PlannerSourceRef[] = [], depth = 0): PlannerSourceRef[] {
+  if (depth > 8) return refs
+  if (Array.isArray(value)) {
+    for (const item of value) collectSourceRefs(item, refs, depth + 1)
+    return refs
   }
+  if (!isRecord(value)) return refs
+
+  const url = safeHttpUrl(value.url)
+  if (url) {
+    const duplicate = refs.some((ref) => ref.url === url)
+    if (!duplicate) {
+      refs.push({
+        id: `src-search-${refs.length + 1}`,
+        title: typeof value.title === 'string' && value.title.trim() ? value.title.trim() : url,
+        url,
+        kind: 'search',
+        note: typeof value.note === 'string' ? value.note : undefined,
+      })
+    }
+  }
+
+  for (const child of Object.values(value)) collectSourceRefs(child, refs, depth + 1)
+  return refs
 }
 
 function parseResearchBundle(value: unknown): ResearchBundle | null {
-  const text = extractResponseText(value)
-  if (!text) return null
-  const parsed = JSON.parse(text) as unknown
-  if (!isRecord(parsed) || !Array.isArray(parsed.sourceRefs) || !Array.isArray(parsed.insights) || !Array.isArray(parsed.notes)) return null
+  const sourceRefs = collectSourceRefs(value).slice(0, 12)
+  const text = extractResponseText(value) ?? ''
+  const insights = text
+    .split(/\r?\n/g)
+    .map((line) => line.replace(/^\s*[-*]\s*/, '').trim())
+    .filter((line) => line.length > 0)
+    .slice(0, 12)
+
+  if (sourceRefs.length === 0 && insights.length === 0) return null
+
   return {
-    sourceRefs: parsed.sourceRefs
-      .filter(isRecord)
-      .map((item, index) => {
-        const kind: PlannerSourceKind =
-          item.kind === 'official' ||
-          item.kind === 'user-provided' ||
-          item.kind === 'curated' ||
-          item.kind === 'inferred'
-            ? item.kind
-            : 'search'
-        return {
-          id: typeof item.id === 'string' && item.id ? item.id : `src-search-${index + 1}`,
-          title: typeof item.title === 'string' && item.title ? item.title : 'Search source',
-          url: safeHttpUrl(item.url),
-          kind,
-          note: typeof item.note === 'string' ? item.note : undefined,
-        }
-      })
-      .slice(0, 12),
-    insights: parsed.insights.filter((item): item is string => typeof item === 'string').slice(0, 12),
-    notes: parsed.notes.filter((item): item is string => typeof item === 'string').slice(0, 12),
-    usedSearch: true,
+    sourceRefs,
+    insights,
+    notes: sourceRefs.length > 0
+      ? ['Live web search returned source references for review.']
+      : ['OpenAI returned research text without durable source URLs.'],
+    usedSearch: sourceRefs.length > 0,
   }
 }
 
@@ -416,6 +404,7 @@ function createOpenAiResearcher(apiKey: string | undefined, model: string | unde
         model: model || process.env.TRIP_GENERATION_MODEL || 'gpt-5.5',
         tools: [{ type: 'web_search', search_context_size: 'low' }],
         tool_choice: 'auto',
+        include: ['web_search_call.action.sources'],
         input: [
           {
             role: 'system',
@@ -444,19 +433,23 @@ function createOpenAiResearcher(apiKey: string | undefined, model: string | unde
             ],
           },
         ],
-        text: {
-          format: {
-            type: 'json_schema',
-            name: 'familytrips_research_bundle',
-            strict: true,
-            schema: researchResponseSchema(),
-          },
-        },
       }),
     })
 
-    if (!response.ok) return null
-    return parseResearchBundle(await response.json())
+    if (!response.ok) {
+      return {
+        sourceRefs: [],
+        insights: [],
+        notes: [`Live web research request failed with status ${response.status}.`],
+        usedSearch: false,
+      }
+    }
+    return parseResearchBundle(await response.json()) ?? {
+      sourceRefs: [],
+      insights: [],
+      notes: ['Live web research response did not include durable source URLs.'],
+      usedSearch: false,
+    }
   }
 }
 

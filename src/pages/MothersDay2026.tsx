@@ -238,7 +238,7 @@ export default function MothersDay2026() {
                       <span>
                         <span className="block font-semibold text-slate-950">{item.title}</span>
                         {item.notes ? <span className="block text-sm leading-6 text-slate-600">{item.notes}</span> : null}
-                        {item.address ? (
+                        {item.address && !/shared privately/i.test(item.address) ? (
                           <a
                             href={mapsLink(item.address)}
                             target="_blank"
@@ -263,17 +263,12 @@ export default function MothersDay2026() {
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-200">Sunday host mode</p>
               <h2 className="text-3xl font-bold tracking-tight">Cookout command center</h2>
               <p className="text-white/75 leading-7">
-                Our house · 109 Genovese Dr, McKinney, TX 75071. Start time is 2:00 PM.
+                Our house · address shared privately with the family. Start time is 2:00 PM.
                 Family hangs out, eats, and plays whatever games the moms pick.
               </p>
-              <a
-                href={mapsLink(trip.stay.address)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
-              >
-                Open address
-              </a>
+              <p className="inline-flex rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950">
+                Address is in the group chat
+              </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {foodGroups.map(([category, items]) => (

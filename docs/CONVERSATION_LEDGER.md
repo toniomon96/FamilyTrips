@@ -86,3 +86,11 @@ Durable notes for product decisions, open questions, and why the app changed. Ke
 - Trust posture: `/trips/new` now surfaces draft strength, source mode, missing inputs, and booking/confirmation next steps before a preview is accepted.
 - Privacy posture: the raw context field warns users not to paste passports, payment details, door codes, passwords, or private confirmation numbers; obvious sensitive-context patterns are flagged without echoing the private values.
 - API posture: `/api/trips` and `/api/trip-overrides` now have basic request-size and rate-limit guardrails suitable for the current trusted PIN model.
+
+## 2026-05-14 - P0 Privacy And AI UAT Closeout
+
+- Ask: before logging off, add the tests and cleanup that make the app safer and easier to trust.
+- Decision: broad-redact static seed trips so public bundles do not expose private phone numbers, confirmation codes, passwords/access instructions, or exact private home/rental addresses.
+- Guardrail: add `npm run privacy:scan` and wire it into CI/readiness so public seed-data privacy regressions fail fast.
+- UAT posture: live AI research verification is opt-in through `npm run uat:ai-production`; normal UAT remains safe and predictable.
+- Cleanup posture: old ignored UAT report folders can be pruned with a dry-run-first `npm run clean:uat-results -- --keep 10`.

@@ -11,11 +11,14 @@ The full suite creates a temporary preview deployment with a one-time UAT edit P
 Commands:
 
 - `npm run ready:production` - production readiness wrapper: checks Vercel env names, runs non-mutating production UAT smoke, inspects the production domain, and writes a Markdown/JSON report.
+- `npm run privacy:scan` - public seed-data privacy gate: fails if static trip files contain private phone numbers, confirmation codes, passwords/access instructions, or private street addresses.
 - `npm run uat` - full suite: smart trip, manage edit/history/restore, visibility, checklist/packing, browser, and production smoke.
 - `npm run uat:quick` - core smart-trip smoke plus non-mutating production smoke.
 - `npm run uat:smart-trip` - backward-compatible alias for the quick suite.
 - `npm run uat:browser` - rendered browser pass on a temporary generated trip.
+- `npm run uat:ai-production` - opt-in live AI research UAT using a temporary production-shaped Vercel deployment and a one-time UAT PIN.
 - `npm run uat:production` - non-mutating production smoke only.
+- `npm run clean:uat-results -- --keep 10` - dry-run old report cleanup; add `--yes` to delete old ignored folders after reviewing the output.
 
 Useful controls:
 
@@ -31,6 +34,8 @@ To clean up older Codex-created UAT rows during the same run, set a comma-separa
 The Markdown report is the one to send Toni. The JSON report is for agents and CI.
 
 `npm run ready:production` is the fastest "can I send this?" check after a manual deploy. It intentionally treats missing `OPENAI_API_KEY` / research envs as a warning, not a failure, because the deterministic planner should still work. If those optional envs are absent, generated trips will be less research-aware.
+
+`npm run uat:ai-production` is intentionally separate from the normal suite because it may spend OpenAI tokens. It creates only `codex-uat-*` dynamic data, verifies source-aware output, and cleans up the row/deployment unless `UAT_KEEP_DATA=1` or `UAT_KEEP_DEPLOYMENT=1`.
 
 ## Routes
 
