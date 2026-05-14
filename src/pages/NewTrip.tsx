@@ -8,6 +8,7 @@ import {
   type TripTemplateId,
 } from '../utils/tripShell'
 import { todayLocalISO } from '../utils/formatters'
+import { findSensitiveContextWarnings } from '../utils/sensitiveContext'
 import type { Trip } from '../types/trip'
 import type {
   BriefQuality,
@@ -151,6 +152,20 @@ function hasQuality(result: ApiResult): result is Extract<ApiSuccess, { quality:
   return result.ok && 'quality' in result
 }
 
+function sourceModeLabel(mode?: string): string {
+  if (mode === 'search') return 'Researched with sources'
+  if (mode === 'ai') return 'AI-assisted'
+  if (mode === 'ai-fallback') return 'Fallback draft'
+  if (mode === 'curated') return 'Curated pack'
+  return 'Deterministic fallback'
+}
+
+function draftStrengthClass(strength?: string): string {
+  if (strength === 'strong') return 'border-emerald-200 bg-emerald-50 text-emerald-900'
+  if (strength === 'weak') return 'border-amber-200 bg-amber-50 text-amber-900'
+  return 'border-blue-200 bg-blue-50 text-blue-900'
+}
+
 export default function NewTrip() {
   const navigate = useNavigate()
   const today = todayLocalISO()
@@ -203,6 +218,7 @@ export default function NewTrip() {
   )
   const canStart = pin.trim().length > 0 && destination.trim().length > 0 && startDate <= endDate && isValidTripSlug(slug) && !saving
   const isEvent = planType === 'event'
+  const sensitiveWarnings = useMemo(() => findSensitiveContextWarnings(rawContext), [rawContext])
 
   function buildBrief(extraAnswers = answers) {
     const followUpAnswers = Object.values(extraAnswers).map((answer) => answer.trim()).filter(Boolean)
@@ -393,7 +409,7 @@ export default function NewTrip() {
     mode === 'blank'
       ? saving ? 'Creating...' : 'Create blank trip'
       : step === 'start'
-        ? 'Add details'
+        ? 'Start planning'
         : step === 'details'
           ? saving ? 'Checking brief...' : 'Get smart questions'
           : step === 'questions'
@@ -441,6 +457,9 @@ export default function NewTrip() {
               <label className="block space-y-1 sm:col-span-2">
                 <span className="text-sm font-medium text-slate-700">Trip edit PIN</span>
                 <input type="password" autoComplete="current-password" required value={pin} onChange={(event) => setPin(event.target.value)} className={FIELD_CLASS} />
+                <p className="text-xs leading-5 text-slate-500">
+                  Toni shares this with trusted family and friends so FamilyTrips can save and edit the plan.
+                </p>
               </label>
               <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1 sm:col-span-2">
                 <button type="button" onClick={() => setPlanType('trip')} className={`rounded-xl px-3 py-2 text-sm font-semibold ${planType === 'trip' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-600'}`}>
@@ -472,8 +491,31 @@ export default function NewTrip() {
               </label>
               <label className="block space-y-1 sm:col-span-2">
                 <span className="text-sm font-medium text-slate-700">Tell us everything you already know</span>
-                <textarea rows={6} value={rawContext} onChange={(event) => setRawContext(event.target.value)} placeholder={isEvent ? 'Paste the invite, guest notes, food ideas, setup needs, timing, people helping, and anything that matters.' : 'Paste texts, lodging notes, flight timing, restaurant ideas, must-dos, budget, kids, food preferences, and anything you would tell a travel agent.'} className={FIELD_CLASS} />
+                <textarea
+                  rows={6}
+                  value={rawContext}
+                  onChange={(event) => setRawContext(event.target.value)}
+                  placeholder={isEvent ? 'Paste the invite, guest notes, food ideas, setup needs, timing, people helping, and anything that matters.' : 'Paste texts, lodging notes, flight timing, restaurant ideas, must-dos, budget, kids, food preferences, and anything you would tell a travel agent.'}
+                  aria-describedby="raw-context-safety"
+                  className={FIELD_CLASS}
+                />
+                <p id="raw-context-safety" className="text-xs leading-5 text-slate-500">
+                  Safety note: say what is booked, but do not paste passport numbers, payment details, door codes, passwords, or private confirmation numbers.
+                </p>
               </label>
+              {sensitiveWarnings.length > 0 && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 sm:col-span-2">
+                  <p className="text-sm font-semibold text-amber-900">Check this brief before generating</p>
+                  <ul className="mt-2 space-y-1 text-sm text-amber-900">
+                    {sensitiveWarnings.map((warning) => (
+                      <li key={warning.id}>
+                        <span className="font-semibold">{warning.label}: </span>
+                        {warning.description}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div className="rounded-2xl bg-slate-50 p-3 sm:col-span-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Best context to include</p>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -628,6 +670,30 @@ export default function NewTrip() {
                 <p className="mt-1 text-sm text-slate-600">Nothing is written until you accept this preview.</p>
               </div>
               <div className="space-y-3">
+                <div className={`rounded-2xl border p-4 ${draftStrengthClass(previewTrip.planner?.draftStrength)}`}>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide">Draft quality</p>
+                      <h3 className="mt-1 text-xl font-bold capitalize">{previewTrip.planner?.draftStrength ?? generationSummary?.draftStrength ?? 'medium'} draft</h3>
+                      <p className="mt-1 text-sm leading-6">
+                        {sourceModeLabel(previewTrip.planner?.sourceMode)}. Anything marked as needing booking or confirmation should be checked before relying on it.
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold">
+                      {generationSummary?.matchedPackName ?? 'Custom plan'}
+                    </span>
+                  </div>
+                  {(previewTrip.planner?.missingInputs.length ?? 0) > 0 && (
+                    <div className="mt-3">
+                      <p className="text-sm font-semibold">What would make it stronger</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {previewTrip.planner?.missingInputs.map((input) => (
+                          <span key={input} className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold">{input}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {previewTrip.planner?.warnings.map((warning) => <p key={warning} className="rounded-2xl bg-amber-50 px-3 py-2 text-sm text-amber-900">{warning}</p>)}
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   <p className="rounded-2xl bg-slate-50 p-3 text-sm"><span className="block text-xs text-slate-500">Days</span>{previewTrip.itinerary.length}</p>
@@ -651,6 +717,33 @@ export default function NewTrip() {
                       </ul>
                     </article>
                   ))}
+                </div>
+                <div className="rounded-2xl border border-slate-200 p-3">
+                  <p className="mb-2 text-sm font-semibold text-slate-800">Must-do and booking next steps</p>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {[
+                      ...previewTrip.bookings.map((booking) => ({
+                        id: booking.id,
+                        title: booking.title,
+                        status: booking.status,
+                        nextStep: booking.nextStep ?? booking.details,
+                      })),
+                      ...previewTrip.thingsToDo.slice(0, 4).map((activity) => ({
+                        id: activity.id,
+                        title: activity.name,
+                        status: activity.status,
+                        nextStep: activity.nextStep ?? activity.notes,
+                      })),
+                    ].slice(0, 8).map((item) => (
+                      <div key={item.id} className="rounded-2xl bg-slate-50 p-3 text-sm">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold text-slate-950">{item.title}</span>
+                          {item.status && <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold capitalize text-slate-600">{item.status.replace(/-/g, ' ')}</span>}
+                        </div>
+                        {item.nextStep && <p className="mt-1 text-xs leading-5 text-slate-600">{item.nextStep}</p>}
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 {generationSummary?.sourceRefs.length ? (
                   <div className="rounded-2xl bg-slate-50 p-3">

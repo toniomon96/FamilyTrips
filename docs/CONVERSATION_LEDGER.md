@@ -78,3 +78,11 @@ Durable notes for product decisions, open questions, and why the app changed. Ke
 - Ask: Toni wanted the best remaining closeout work knocked out after deploy.
 - Decision: keep the shipped app live, add a trusted-planner handoff for Logan/future users, add a repeatable `npm run ready:production` check, and make the create form more explicit about the context that creates a strong draft.
 - Environment posture: production has the required edit/admin/Supabase env names; live OpenAI research remains optional and should be enabled by adding `OPENAI_API_KEY` plus research envs when Toni wants stronger source-aware generation.
+
+## 2026-05-14 - Command Center Quality Slice
+
+- Ask: implement the brutal audit's highest-leverage fix so generated trips feel like a travel-agent command center instead of a giant manage form.
+- Decision: keep the full owner editor, but move it behind an `Advanced Editor` tab. Normal users now land on compact command-center panels for overview, itinerary, must-dos, bookings, lists, budget, sharing, sources, and Smart Assist.
+- Trust posture: `/trips/new` now surfaces draft strength, source mode, missing inputs, and booking/confirmation next steps before a preview is accepted.
+- Privacy posture: the raw context field warns users not to paste passports, payment details, door codes, passwords, or private confirmation numbers; obvious sensitive-context patterns are flagged without echoing the private values.
+- API posture: `/api/trips` and `/api/trip-overrides` now have basic request-size and rate-limit guardrails suitable for the current trusted PIN model.

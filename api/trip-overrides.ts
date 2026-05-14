@@ -2,6 +2,11 @@ import { timingSafeEqual } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createClient } from '@supabase/supabase-js'
 import {
+  enforceRateLimit,
+  readJsonBody,
+  RequestGuardError,
+} from './_requestGuards.js'
+import {
   runTripOverrideAction,
   type TripOverrideStore,
 } from '../src/server/tripOverrideActions.js'
@@ -22,20 +27,6 @@ function pinMatches(submitted: string, expected: string): boolean {
   const expectedBuffer = Buffer.from(expected)
   if (submittedBuffer.length !== expectedBuffer.length) return false
   return timingSafeEqual(submittedBuffer, expectedBuffer)
-}
-
-async function readBody(req: JsonRequest): Promise<unknown> {
-  if (req.body !== undefined) {
-    if (typeof req.body !== 'string') return req.body
-    return req.body.trim() ? JSON.parse(req.body) : {}
-  }
-
-  const chunks: Buffer[] = []
-  for await (const chunk of req) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-  }
-  const raw = Buffer.concat(chunks).toString('utf8')
-  return raw.trim() ? JSON.parse(raw) : {}
 }
 
 function createStore(url: string, serviceRoleKey: string): TripOverrideStore {
@@ -109,14 +100,19 @@ export default async function handler(req: JsonRequest, res: ServerResponse) {
   }
 
   try {
-    const body = await readBody(req)
+    enforceRateLimit(req, 'trip-overrides')
+    const body = await readJsonBody(req)
     const result = await runTripOverrideAction(body, createStore(supabaseUrl, serviceRoleKey), {
       adminPin: process.env.ADMIN_PIN,
       editorPin: process.env.TRIP_EDITOR_PIN,
       pinMatches,
     })
     json(res, result.status, result.body)
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestGuardError) {
+      json(res, error.status, { ok: false, error: error.publicMessage })
+      return
+    }
     json(res, 500, { ok: false, error: 'Owner edit request failed.' })
   }
 }

@@ -15,7 +15,9 @@ import type {
   ItineraryItem,
   PackingItem,
   Person,
+  PlanItemStatus,
   PlanKind,
+  PlannerSourceRef,
   Stay,
   Trip,
 } from '../types/trip'
@@ -570,6 +572,580 @@ function validationSummary(errors: ValidationMessage[]) {
   )
 }
 
+type CommandPanel =
+  | 'overview'
+  | 'itinerary'
+  | 'mustDos'
+  | 'bookings'
+  | 'tasks'
+  | 'budget'
+  | 'share'
+  | 'sources'
+  | 'assist'
+  | 'advanced'
+
+type MiniPlan = {
+  id: string
+  title: string
+  category?: string
+  status?: PlanItemStatus
+  why?: string
+  nextStep?: string
+  notes?: string
+  link?: string
+  sourceIds?: string[]
+}
+
+const COMMAND_PANEL_LABELS: Record<CommandPanel, { trip: string; event: string }> = {
+  overview: { trip: 'Overview', event: 'Overview' },
+  itinerary: { trip: 'Itinerary', event: 'Run of show' },
+  mustDos: { trip: 'Must-dos', event: 'Moments' },
+  bookings: { trip: 'Bookings', event: 'Event tasks' },
+  tasks: { trip: 'Checklist/Packing', event: 'Supplies' },
+  budget: { trip: 'Budget', event: 'Budget' },
+  share: { trip: 'Share', event: 'Share' },
+  sources: { trip: 'Sources', event: 'Sources' },
+  assist: { trip: 'Smart Assist', event: 'Smart Assist' },
+  advanced: { trip: 'Advanced Editor', event: 'Advanced Editor' },
+}
+
+const COMMAND_PANEL_ORDER: CommandPanel[] = [
+  'overview',
+  'itinerary',
+  'mustDos',
+  'bookings',
+  'tasks',
+  'budget',
+  'share',
+  'sources',
+  'assist',
+  'advanced',
+]
+
+function classNames(...values: (string | false | null | undefined)[]): string {
+  return values.filter(Boolean).join(' ')
+}
+
+function statusLabel(status?: string): string {
+  if (!status) return 'suggested'
+  return status.replace(/-/g, ' ')
+}
+
+function statusTone(status?: PlanItemStatus): string {
+  if (status === 'confirmed') return 'border-emerald-200 bg-emerald-50 text-emerald-800'
+  if (status === 'needs-booking') return 'border-rose-200 bg-rose-50 text-rose-800'
+  if (status === 'needs-confirmation') return 'border-amber-200 bg-amber-50 text-amber-800'
+  return 'border-slate-200 bg-slate-50 text-slate-700'
+}
+
+function strengthTone(strength?: string): string {
+  if (strength === 'strong') return 'border-emerald-200 bg-emerald-50 text-emerald-900'
+  if (strength === 'weak') return 'border-amber-200 bg-amber-50 text-amber-900'
+  return 'border-blue-200 bg-blue-50 text-blue-900'
+}
+
+function commandPanelsForKind(isEvent: boolean): { id: CommandPanel; label: string }[] {
+  return COMMAND_PANEL_ORDER.map((id) => ({
+    id,
+    label: isEvent ? COMMAND_PANEL_LABELS[id].event : COMMAND_PANEL_LABELS[id].trip,
+  }))
+}
+
+function sourceModeLabel(mode?: NonNullable<Trip['planner']>['sourceMode']): string {
+  if (mode === 'search') return 'Researched with sources'
+  if (mode === 'ai') return 'AI-assisted'
+  if (mode === 'ai-fallback') return 'Fallback draft'
+  if (mode === 'curated') return 'Curated pack'
+  if (mode === 'deterministic') return 'Deterministic fallback'
+  return 'Source mode not recorded'
+}
+
+function StatusBadge({ status }: { status?: PlanItemStatus }) {
+  return (
+    <span className={classNames('inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold capitalize', statusTone(status))}>
+      {statusLabel(status)}
+    </span>
+  )
+}
+
+function CommandTabs({
+  activePanel,
+  onChange,
+  isEvent,
+}: {
+  activePanel: CommandPanel
+  onChange: (panel: CommandPanel) => void
+  isEvent: boolean
+}) {
+  const panels = commandPanelsForKind(isEvent)
+
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
+      <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label={isEvent ? 'Event workspace sections' : 'Trip workspace sections'}>
+        {panels.map((panel) => (
+          <button
+            key={panel.id}
+            type="button"
+            role="tab"
+            aria-selected={activePanel === panel.id}
+            onClick={() => onChange(panel.id)}
+            className={classNames(
+              'min-h-11 shrink-0 rounded-2xl px-3 py-2 text-sm font-semibold transition',
+              activePanel === panel.id
+                ? 'bg-slate-950 text-white shadow-sm'
+                : 'bg-slate-50 text-slate-700 hover:bg-slate-100',
+            )}
+          >
+            {panel.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function MetricCard({ label, value, note }: { label: string; value: ReactNode; note?: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-slate-950">{value}</p>
+      {note && <p className="mt-1 text-xs leading-5 text-slate-500">{note}</p>}
+    </div>
+  )
+}
+
+function getSources(sourceIds: string[] | undefined, sourceRefs: PlannerSourceRef[]): PlannerSourceRef[] {
+  if (!sourceIds?.length) return []
+  const ids = new Set(sourceIds)
+  return sourceRefs.filter((source) => ids.has(source.id))
+}
+
+function MiniPlanCard({ plan, sourceRefs }: { plan: MiniPlan; sourceRefs: PlannerSourceRef[] }) {
+  const sources = getSources(plan.sourceIds, sourceRefs)
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          {plan.category && <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{plan.category}</p>}
+          <h3 className="mt-1 text-base font-bold text-slate-950">{plan.title}</h3>
+        </div>
+        <StatusBadge status={plan.status} />
+      </div>
+      {plan.why && <p className="mt-3 text-sm leading-6 text-slate-700">{plan.why}</p>}
+      {plan.notes && <p className="mt-2 text-sm leading-6 text-slate-600">{plan.notes}</p>}
+      {plan.nextStep && (
+        <p className="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-sm text-slate-700">
+          <span className="font-semibold text-slate-950">Next step: </span>
+          {plan.nextStep}
+        </p>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {plan.link && (
+          <a href={plan.link} target="_blank" rel="noreferrer" className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700">
+            Open link
+          </a>
+        )}
+        {sources.map((source) => (
+          source.url ? (
+            <a key={source.id} href={source.url} target="_blank" rel="noreferrer" className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-800">
+              Source
+            </a>
+          ) : null
+        ))}
+      </div>
+    </article>
+  )
+}
+
+function buildMiniPlans(trip: Trip): MiniPlan[] {
+  const plans = new Map<string, MiniPlan>()
+  const add = (plan: MiniPlan) => {
+    const key = plan.title.toLowerCase()
+    const current = plans.get(key)
+    plans.set(key, {
+      ...plan,
+      status: current?.status === 'needs-booking' ? current.status : plan.status ?? current?.status,
+      why: plan.why ?? current?.why,
+      nextStep: plan.nextStep ?? current?.nextStep,
+      notes: plan.notes ?? current?.notes,
+      sourceIds: plan.sourceIds ?? current?.sourceIds,
+      link: plan.link ?? current?.link,
+    })
+  }
+
+  for (const activity of trip.thingsToDo) {
+    add({
+      id: `activity-${activity.id}`,
+      title: activity.name,
+      category: activity.category ?? 'Idea',
+      status: activity.status,
+      why: activity.why,
+      nextStep: activity.nextStep,
+      notes: activity.notes,
+      link: activity.url,
+      sourceIds: activity.sourceIds,
+    })
+  }
+
+  for (const booking of trip.bookings) {
+    add({
+      id: `booking-${booking.id}`,
+      title: booking.title,
+      category: booking.kind,
+      status: booking.status,
+      why: booking.why,
+      nextStep: booking.nextStep,
+      notes: booking.details,
+      link: booking.link,
+      sourceIds: booking.sourceIds,
+    })
+  }
+
+  for (const day of trip.itinerary) {
+    for (const [index, item] of day.items.entries()) {
+      if (!item.status || item.status === 'suggested') continue
+      add({
+        id: `itinerary-${day.date}-${index}`,
+        title: item.title,
+        category: day.title ?? day.date,
+        status: item.status,
+        why: item.why,
+        nextStep: item.nextStep,
+        notes: item.notes,
+        link: item.link,
+        sourceIds: item.sourceIds,
+      })
+    }
+  }
+
+  return Array.from(plans.values()).sort((a, b) => {
+    const priority = { 'needs-booking': 0, 'needs-confirmation': 1, confirmed: 2, suggested: 3 }
+    return (priority[a.status ?? 'suggested'] ?? 3) - (priority[b.status ?? 'suggested'] ?? 3)
+  })
+}
+
+function TripCommandPanel({
+  trip,
+  activePanel,
+  onCopyTripLink,
+}: {
+  trip: Trip
+  activePanel: Exclude<CommandPanel, 'advanced' | 'assist'>
+  onCopyTripLink: () => void
+}) {
+  const isEvent = trip.kind === 'event'
+  const planner = trip.planner
+  const sourceRefs = trip.planner?.sourceRefs ?? []
+  const miniPlans = buildMiniPlans(trip)
+  const actionItems = [
+    ...trip.bookings.map((item) => ({
+      id: item.id,
+      title: item.title,
+      category: item.kind,
+      status: item.status,
+      nextStep: item.nextStep,
+      notes: item.details,
+    })),
+    ...(isEvent ? trip.eventTasks ?? [] : trip.checklist).map((item) => ({
+      id: item.id,
+      title: item.title,
+      category: item.category,
+      status: item.status,
+      nextStep: item.nextStep,
+      notes: item.notes,
+    })),
+  ].filter((item) => item.status === 'needs-booking' || item.status === 'needs-confirmation')
+
+  if (activePanel === 'overview') {
+    return (
+      <section className="space-y-4" role="tabpanel">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <MetricCard label="Days" value={trip.itinerary.length} note={isEvent ? 'Run-of-show blocks' : 'Calendar days'} />
+          <MetricCard label={isEvent ? 'Tasks' : 'Bookings'} value={isEvent ? trip.eventTasks?.length ?? 0 : trip.bookings.length} note="Needs review" />
+          <MetricCard label={isEvent ? 'Supplies' : 'Packing'} value={isEvent ? trip.supplies?.length ?? 0 : trip.packing?.length ?? 0} note={planner ? 'Generated list' : 'Current list'} />
+          <MetricCard label="Sources" value={sourceRefs.length} note={planner ? sourceModeLabel(planner.sourceMode) : 'No generated source notes yet'} />
+        </div>
+
+        {planner ? (
+          <div className={classNames('rounded-3xl border p-5 shadow-sm', strengthTone(planner.draftStrength))}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wide">Draft confidence</p>
+                <h2 className="mt-1 text-2xl font-bold capitalize">{planner.draftStrength} draft</h2>
+                <p className="mt-1 text-sm leading-6">{sourceModeLabel(planner.sourceMode)}. Confirm anything marked booking-sensitive before relying on exact timing.</p>
+              </div>
+              <StatusBadge status={planner.draftStrength === 'strong' ? 'confirmed' : 'needs-confirmation'} />
+            </div>
+            {planner.missingInputs.length ? (
+              <div className="mt-4">
+                <p className="text-sm font-semibold">What would make this stronger</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {planner.missingInputs.map((item) => (
+                    <span key={item} className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold">{item}</span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 text-slate-900 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Plan status</p>
+                <h2 className="mt-1 text-2xl font-bold text-slate-950">Hand-built plan</h2>
+                <p className="mt-1 text-sm leading-6 text-slate-600">
+                  This plan was curated manually or loaded from the original trip data. Use Smart Assist if you want generated improvements or source-backed additions.
+                </p>
+              </div>
+              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                manual
+              </span>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">{isEvent ? 'Next event actions' : 'Next best actions'}</p>
+            <h2 className="mt-1 text-xl font-bold text-slate-950">{isEvent ? 'Confirm, assign, then share.' : 'Book, confirm, then share.'}</h2>
+            <div className="mt-4 space-y-3">
+              {actionItems.slice(0, 6).map((item) => (
+                <article key={`${item.category}-${item.id}`} className="rounded-2xl bg-slate-50 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-semibold text-slate-950">{item.title}</p>
+                    <StatusBadge status={item.status} />
+                  </div>
+                  {item.nextStep && <p className="mt-1 text-sm text-slate-600">{item.nextStep}</p>}
+                  {!item.nextStep && item.notes && <p className="mt-1 text-sm text-slate-600">{item.notes}</p>}
+                </article>
+              ))}
+              {actionItems.length === 0 && (
+                <p className="text-sm text-slate-600">
+                  {isEvent ? 'No urgent event tasks or assignments are flagged right now.' : 'No urgent booking or confirmation items are flagged right now.'}
+                </p>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">{isEvent ? 'Venue' : 'Home base'}</p>
+            <h2 className="mt-1 text-xl font-bold text-slate-950">{trip.stay.name}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{trip.stay.address}</p>
+            <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+              <p className="rounded-2xl bg-slate-50 p-3"><span className="block text-xs text-slate-500">{isEvent ? 'Starts' : 'Check-in'}</span>{trip.stay.checkIn}</p>
+              <p className="rounded-2xl bg-slate-50 p-3"><span className="block text-xs text-slate-500">{isEvent ? 'Ends' : 'Check-out'}</span>{trip.stay.checkOut}</p>
+            </div>
+            {trip.stay.notes && <p className="mt-3 text-sm leading-6 text-slate-600">{trip.stay.notes}</p>}
+          </section>
+        </div>
+      </section>
+    )
+  }
+
+  if (activePanel === 'itinerary') {
+    return (
+      <section className="space-y-3" role="tabpanel">
+        {trip.itinerary.map((day) => (
+          <article key={day.date} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{day.date}</p>
+            <h2 className="mt-1 text-xl font-bold text-slate-950">{day.title ?? 'Plan'}</h2>
+            <div className="mt-4 space-y-3">
+              {day.items.map((item, index) => (
+                <div key={`${day.date}-${index}`} className="rounded-2xl bg-slate-50 p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {item.time && <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-slate-600">{item.time}</span>}
+                    <p className="font-semibold text-slate-950">{item.title}</p>
+                    <StatusBadge status={item.status} />
+                  </div>
+                  {item.notes && <p className="mt-2 text-sm leading-6 text-slate-600">{item.notes}</p>}
+                  {item.nextStep && <p className="mt-2 text-sm text-slate-700"><span className="font-semibold">Next step:</span> {item.nextStep}</p>}
+                </div>
+              ))}
+            </div>
+          </article>
+        ))}
+      </section>
+    )
+  }
+
+  if (activePanel === 'mustDos') {
+    return (
+      <section className="space-y-3" role="tabpanel">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">{isEvent ? 'Moments' : 'Mini-plans'}</p>
+          <h2 className="mt-1 text-xl font-bold text-slate-950">{isEvent ? 'Must-have moments with next steps.' : 'Priority ideas with next steps.'}</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            {isEvent
+              ? 'These combine important moments, setup needs, and assignment reminders into action cards.'
+              : 'These combine must-dos, source-backed ideas, and booking reminders into action cards.'}
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {miniPlans.slice(0, 16).map((plan) => <MiniPlanCard key={plan.id} plan={plan} sourceRefs={sourceRefs} />)}
+          {miniPlans.length === 0 && (
+            <p className="rounded-2xl bg-white p-4 text-sm text-slate-600">
+              {isEvent ? 'No must-have moments are listed yet.' : 'No must-do ideas are listed yet.'}
+            </p>
+          )}
+        </div>
+      </section>
+    )
+  }
+
+  if (activePanel === 'bookings') {
+    const bookingPanelItems: MiniPlan[] = isEvent
+      ? (trip.eventTasks ?? []).map((item) => ({
+          id: item.id,
+          title: item.title,
+          category: item.category,
+          status: item.status,
+          why: item.why,
+          nextStep: item.nextStep,
+          notes: item.notes,
+          sourceIds: item.sourceIds,
+        }))
+      : trip.bookings.map((item) => ({
+          id: item.id,
+          title: item.title,
+          category: item.kind,
+          status: item.status,
+          why: item.why,
+          nextStep: item.nextStep,
+          notes: item.details,
+          link: item.link,
+          sourceIds: item.sourceIds,
+        }))
+    return (
+      <section className="grid grid-cols-1 gap-3 lg:grid-cols-2" role="tabpanel">
+        {bookingPanelItems.map((item) => <MiniPlanCard key={item.id} sourceRefs={sourceRefs} plan={item} />)}
+        {bookingPanelItems.length === 0 && (
+          <p className="rounded-2xl bg-white p-4 text-sm text-slate-600">
+            {isEvent ? 'No event tasks are listed yet.' : 'No bookings are listed yet.'}
+          </p>
+        )}
+      </section>
+    )
+  }
+
+  if (activePanel === 'tasks') {
+    const tasks = isEvent ? trip.eventTasks ?? [] : trip.checklist
+    const packables = isEvent ? trip.supplies ?? trip.packing ?? [] : trip.packing ?? []
+    return (
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2" role="tabpanel">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-950">{isEvent ? 'Event tasks' : 'Checklist'}</h2>
+          <div className="mt-4 space-y-2">
+            {tasks.slice(0, 12).map((item) => (
+              <div key={item.id} className="rounded-2xl bg-slate-50 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-semibold text-slate-950">{item.title}</p>
+                  <StatusBadge status={item.status} />
+                </div>
+                {item.notes && <p className="mt-1 text-sm text-slate-600">{item.notes}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-950">{isEvent ? 'Supplies' : 'Packing'}</h2>
+          <div className="mt-4 space-y-2">
+            {packables.slice(0, 12).map((item) => (
+              <div key={item.id} className="rounded-2xl bg-slate-50 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-semibold text-slate-950">{item.title}</p>
+                  <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-slate-600">{item.category}</span>
+                </div>
+                {item.notes && <p className="mt-1 text-sm text-slate-600">{item.notes}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (activePanel === 'budget') {
+    return (
+      <section className="grid grid-cols-1 gap-3 lg:grid-cols-2" role="tabpanel">
+        {trip.budget.map((item) => (
+          <article key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.status ?? 'tbd'}</p>
+                <h3 className="mt-1 font-bold text-slate-950">{item.name}</h3>
+              </div>
+              <p className="font-bold text-slate-950">{trip.currency}{item.total}</p>
+            </div>
+            {item.notes && <p className="mt-2 text-sm text-slate-600">{item.notes}</p>}
+            {item.nextStep && <p className="mt-2 text-sm text-slate-700"><span className="font-semibold">Next step:</span> {item.nextStep}</p>}
+          </article>
+        ))}
+      </section>
+    )
+  }
+
+  if (activePanel === 'share') {
+    return (
+      <section className="space-y-3" role="tabpanel">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Share</p>
+          <h2 className="mt-1 text-xl font-bold text-slate-950">Send the plan without explaining the app.</h2>
+          <button type="button" onClick={onCopyTripLink} className="mt-4 rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white">
+            Copy trip link
+          </button>
+        </div>
+        {(trip.copyBlocks ?? []).map((block) => (
+          <article key={block.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-bold text-slate-950">{block.title}</h3>
+              <StatusBadge status={block.status} />
+            </div>
+            <pre className="mt-3 whitespace-pre-wrap rounded-2xl bg-slate-50 p-3 text-sm leading-6 text-slate-700">{block.body}</pre>
+          </article>
+        ))}
+      </section>
+    )
+  }
+
+  return (
+    <section className="space-y-3" role="tabpanel">
+      <div className={classNames('rounded-3xl border p-5 shadow-sm', planner ? strengthTone(planner.draftStrength) : 'border-slate-200 bg-white text-slate-900')}>
+        <p className="text-sm font-semibold uppercase tracking-wide">{planner ? 'Draft source and trust' : 'Source notes'}</p>
+        <h2 className="mt-1 text-xl font-bold">{planner ? sourceModeLabel(planner.sourceMode) : 'No generated source notes yet'}</h2>
+        {planner ? (
+          planner.warnings.map((warning) => <p key={warning} className="mt-2 text-sm leading-6">{warning}</p>)
+        ) : (
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            This hand-built plan does not have AI research citations attached. Smart Assist can add generated notes later without replacing the original trip.
+          </p>
+        )}
+      </div>
+      {sourceRefs.map((source) => (
+        <article key={source.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="font-bold text-slate-950">{source.title}</h3>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold capitalize text-slate-600">{source.kind}</span>
+          </div>
+          {source.note && <p className="mt-2 text-sm text-slate-600">{source.note}</p>}
+          {source.url && (
+            <a href={source.url} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-800">
+              Open source
+            </a>
+          )}
+        </article>
+      ))}
+      {planner?.notes?.length ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h3 className="font-bold text-slate-950">Planner notes</h3>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
+            {planner.notes.slice(0, 8).map((note) => <li key={note}>{note}</li>)}
+          </ul>
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
 async function ownerRequest(payload: Record<string, unknown>): Promise<OwnerApiResult> {
   const response = await fetch('/api/trip-overrides', {
     method: 'POST',
@@ -595,6 +1171,7 @@ export default function ManageTrip() {
   const [assistAction, setAssistAction] = useState<SmartAssistAction>('fill-missing')
   const [assistNote, setAssistNote] = useState('')
   const [assistPreview, setAssistPreview] = useState<SmartAssistPreview | null>(null)
+  const [activePanel, setActivePanel] = useState<CommandPanel>('overview')
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -863,74 +1440,98 @@ export default function ManageTrip() {
         </section>
       )}
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Smart Assist</p>
-            <h2 className="mt-1 text-2xl font-bold text-slate-950">Improve this plan without starting over.</h2>
-            <p className="mt-1 text-sm text-slate-600">
-              Preview suggested edits, then apply them through the same save/history flow.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-            disabled={!pin.trim() || saveState === 'saving'}
-            onClick={handleSmartAssistPreview}
-          >
-            {saveState === 'saving' ? 'Checking...' : 'Preview assist'}
-          </button>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <SelectInput
-            label="Assist action"
-            value={assistAction}
-            onChange={(value) => setAssistAction(value as SmartAssistAction)}
-            options={[
-              { value: 'fill-missing', label: 'Fill missing sections' },
-              { value: 'improve-itinerary', label: 'Improve itinerary' },
-              { value: 'booking-reminders', label: 'Create booking reminders' },
-              { value: 'packing-checklist', label: 'Build checklist / packing' },
-              { value: 'looser-day', label: 'Make the plan looser' },
-              { value: 'tighter-day', label: 'Tighten open days' },
-            ]}
-          />
-          <TextArea
-            label="Optional instruction"
-            value={assistNote}
-            rows={3}
-            placeholder="Example: make this more kid-friendly, add reminders for dinner reservations, keep mornings open..."
-            onChange={setAssistNote}
-          />
-        </div>
-        {assistPreview && (
-          <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 space-y-3">
-            <div>
-              <p className="font-semibold text-slate-950">Preview summary</p>
-              {assistPreview.summary.length ? (
-                <ul className="mt-2 list-disc pl-5 text-sm text-slate-700 space-y-1">
-                  {assistPreview.summary.map((item) => <li key={item}>{item}</li>)}
-                </ul>
-              ) : (
-                <p className="mt-2 text-sm text-slate-700">No safe automatic changes were found.</p>
-              )}
-              {assistPreview.warnings.map((warning) => (
-                <p key={warning} className="mt-2 text-sm text-amber-800">{warning}</p>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={handleApplySmartAssist}>
-                Apply and save live
-              </button>
-              <button type="button" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700" onClick={() => setAssistPreview(null)}>
-                Dismiss preview
-              </button>
-            </div>
-          </div>
-        )}
-      </section>
+      <CommandTabs activePanel={activePanel} onChange={setActivePanel} isEvent={draft.kind === 'event'} />
 
-      {validationSummary(allErrors)}
+      {activePanel !== 'advanced' && allErrors.length > 0 && validationSummary(allErrors)}
+
+      {activePanel !== 'advanced' && activePanel !== 'assist' && (
+        <TripCommandPanel
+          trip={draft}
+          activePanel={activePanel}
+          onCopyTripLink={handleCopyTripLink}
+        />
+      )}
+
+      {activePanel === 'assist' && (
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-4" role="tabpanel">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Smart Assist</p>
+              <h2 className="mt-1 text-2xl font-bold text-slate-950">Improve this plan without starting over.</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Preview suggested edits, then apply them through the same save/history flow.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+              disabled={!pin.trim() || saveState === 'saving'}
+              onClick={handleSmartAssistPreview}
+            >
+              {saveState === 'saving' ? 'Checking...' : 'Preview assist'}
+            </button>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <SelectInput
+              label="Assist action"
+              value={assistAction}
+              onChange={(value) => setAssistAction(value as SmartAssistAction)}
+              options={[
+                { value: 'fill-missing', label: 'Fill missing sections' },
+                { value: 'improve-itinerary', label: 'Improve itinerary' },
+                { value: 'booking-reminders', label: 'Create booking reminders' },
+                { value: 'packing-checklist', label: 'Build checklist / packing' },
+                { value: 'looser-day', label: 'Make the plan looser' },
+                { value: 'tighter-day', label: 'Tighten open days' },
+              ]}
+            />
+            <TextArea
+              label="Optional instruction"
+              value={assistNote}
+              rows={3}
+              placeholder="Example: make this more kid-friendly, add reminders for dinner reservations, keep mornings open..."
+              onChange={setAssistNote}
+            />
+          </div>
+          {assistPreview && (
+            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 space-y-3">
+              <div>
+                <p className="font-semibold text-slate-950">Preview summary</p>
+                {assistPreview.summary.length ? (
+                  <ul className="mt-2 list-disc pl-5 text-sm text-slate-700 space-y-1">
+                    {assistPreview.summary.map((item) => <li key={item}>{item}</li>)}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-sm text-slate-700">No safe automatic changes were found.</p>
+                )}
+                {assistPreview.warnings.map((warning) => (
+                  <p key={warning} className="mt-2 text-sm text-amber-800">{warning}</p>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={handleApplySmartAssist}>
+                  Apply and save live
+                </button>
+                <button type="button" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700" onClick={() => setAssistPreview(null)}>
+                  Dismiss preview
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {activePanel === 'advanced' && (
+        <>
+          <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-amber-800">Advanced Editor</p>
+            <h2 className="mt-1 text-2xl font-bold text-slate-950">Full live editor for detailed cleanup.</h2>
+            <p className="mt-1 text-sm leading-6 text-slate-700">
+              This is the powerful owner/admin workspace. Use the command center tabs for normal review, and use this section only when you need to edit the underlying trip data directly.
+            </p>
+          </section>
+
+          {validationSummary(allErrors)}
 
       <Section title="Basics">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1283,6 +1884,8 @@ export default function ManageTrip() {
           </button>
         </div>
       </div>
+        </>
+      )}
     </form>
   )
 }

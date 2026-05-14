@@ -18,10 +18,14 @@ TRIP_GENERATION_MODEL=gpt-5.5
 TRIP_RESEARCH_MODEL=gpt-5.5
 TRIP_RESEARCH_ENABLED=1
 TRIP_RESEARCH_MAX_QUERIES=4
+TRIP_API_RATE_LIMIT=60
+TRIP_API_RATE_WINDOW_MS=60000
+TRIP_API_MAX_BODY_BYTES=262144
 ```
 
-`ADMIN_PIN`, `TRIP_EDITOR_PIN`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `TRIP_GENERATION_MODEL`, `TRIP_RESEARCH_MODEL`, `TRIP_RESEARCH_ENABLED`, and `TRIP_RESEARCH_MAX_QUERIES` are server-only. Do not prefix them with `VITE_`.
+`ADMIN_PIN`, `TRIP_EDITOR_PIN`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `TRIP_GENERATION_MODEL`, `TRIP_RESEARCH_MODEL`, `TRIP_RESEARCH_ENABLED`, `TRIP_RESEARCH_MAX_QUERIES`, `TRIP_API_RATE_LIMIT`, `TRIP_API_RATE_WINDOW_MS`, and `TRIP_API_MAX_BODY_BYTES` are server-only. Do not prefix them with `VITE_`.
 `OPENAI_API_KEY` is optional; if it is missing, research is disabled, or generation output fails validation, `/api/trips` falls back to the curated/deterministic smart draft builder.
+The `TRIP_API_*` values are optional guardrails for the trusted PIN planning APIs; the defaults are suitable for normal family/friends use.
 
 ## Schema
 

@@ -95,6 +95,10 @@ async function withCheckedPage(browser, name, viewport, fn) {
     await fn(page)
     const hasViteOverlay = await page.locator('vite-error-overlay').count()
     if (hasViteOverlay > 0) throw new Error('Vite error overlay is visible.')
+    const horizontalOverflow = await page.evaluate(() => (
+      Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - document.documentElement.clientWidth
+    ))
+    if (horizontalOverflow > 2) throw new Error(`Horizontal overflow detected: ${horizontalOverflow}px.`)
     if (pageErrors.length > 0) throw new Error(`Page runtime errors: ${pageErrors.join(' | ')}`)
     if (consoleErrors.length > 0) throw new Error(`Console errors: ${consoleErrors.join(' | ')}`)
   } finally {
@@ -145,10 +149,41 @@ async function testTripsNewModes(browser) {
         await expect(page.locator('header').getByRole('button', { name: 'Start blank' })).toHaveClass(/bg-white/)
         await page.locator('header').getByRole('button', { name: 'Build my plan' }).click()
         await expect(page.getByText('Start with the essentials')).toBeVisible()
+        await expect(page.getByText('Toni shares this with trusted family and friends')).toBeVisible()
+        const bodyText = await page.locator('body').innerText()
+        if (/Logan|Morgan/i.test(bodyText)) throw new Error('Trips/new still exposes Logan or Morgan as public example copy.')
         await screenshot(page, `trips-new-${label}`)
       })
     })
   }
+}
+
+async function testStaticAndEventManageCopy(browser) {
+  await runStep('browser.static-manage-copy.mobile', async () => {
+    await withCheckedPage(browser, 'static-manage-copy-mobile', { width: 390, height: 844 }, async (page) => {
+      await page.goto(`${baseUrl}/okc/manage`, { waitUntil: 'domcontentloaded' })
+      await expect(page.getByRole('heading', { name: /Manage/i })).toBeVisible({ timeout: 45000 })
+      await expect(page.getByText('Hand-built plan')).toBeVisible()
+      await expect(page.getByText('No generated source notes yet')).toBeVisible()
+      await expect(page.getByText('Draft confidence')).toHaveCount(0)
+      await expect(page.getByText('Deterministic fallback')).toHaveCount(0)
+      await screenshot(page, 'static-manage-copy-mobile')
+    })
+  })
+
+  await runStep('browser.event-manage-copy.mobile', async () => {
+    await withCheckedPage(browser, 'event-manage-copy-mobile', { width: 390, height: 844 }, async (page) => {
+      await page.goto(`${baseUrl}/family-cookout/manage`, { waitUntil: 'domcontentloaded' })
+      await expect(page.getByRole('heading', { name: /Manage/i })).toBeVisible({ timeout: 45000 })
+      await expect(page.getByRole('tab', { name: 'Run of show' })).toBeVisible()
+      await expect(page.getByRole('tab', { name: 'Moments' })).toBeVisible()
+      await expect(page.getByRole('tab', { name: 'Event tasks' })).toBeVisible()
+      await expect(page.getByRole('tab', { name: 'Supplies' })).toBeVisible()
+      await expect(page.getByText('Confirm, assign, then share.')).toBeVisible()
+      await expect(page.getByText('Book, confirm, then share.')).toHaveCount(0)
+      await screenshot(page, 'event-manage-copy-mobile')
+    })
+  })
 }
 
 async function testGeneratedRoutes(browser) {
@@ -172,7 +207,14 @@ async function testGeneratedRoutes(browser) {
       await withCheckedPage(browser, `generated-manage-${label}`, viewport, async (page) => {
         await page.goto(`${baseUrl}/${generatedSlug}/manage?created=1&draft=generated`, { waitUntil: 'domcontentloaded' })
         await expect(page.getByText('Draft created')).toBeVisible({ timeout: 45000 })
+        await expect(page.getByRole('tab', { name: 'Overview' })).toBeVisible()
+        await expect(page.getByRole('tab', { name: 'Advanced Editor' })).toBeVisible()
+        await expect(page.getByText('Draft confidence')).toBeVisible()
         await expect(page.getByRole('link', { name: 'View trip' })).toBeVisible()
+        if (label === 'mobile') {
+          const height = await page.evaluate(() => document.documentElement.scrollHeight)
+          if (height > 14000) throw new Error(`Generated manage page is too tall for the command center: ${height}px.`)
+        }
         await screenshot(page, `generated-manage-${label}`)
       })
     })
@@ -194,7 +236,7 @@ async function testFormSubmission(browser) {
       await page.getByLabel('Tell us everything you already know').fill(
         'Honeymoon at Le Blanc Los Cabos with golf, horseback riding on the beach, Lovers Beach, relaxed resort time, and dinner reservation reminders.',
       )
-      await page.getByRole('button', { name: /Add details/i }).click()
+      await page.getByRole('button', { name: /Start planning/i }).click()
       await page.getByLabel('Plan name').fill(formName)
       await page.getByLabel('Share URL').fill(formSlug)
       await page.getByLabel('Travelers').fill('Logan, Morgan')
@@ -210,6 +252,8 @@ async function testFormSubmission(browser) {
       await page.waitForURL(new RegExp(`/${formSlug}/manage`), { timeout: 120000 })
       browserCreatedSlugs.push(formSlug)
       await expect(page.getByText('Draft created')).toBeVisible({ timeout: 45000 })
+      await expect(page.getByRole('tab', { name: 'Advanced Editor' })).toBeVisible()
+      await expect(page.getByText('Draft confidence')).toBeVisible()
       await screenshot(page, 'real-form-submission')
     })
   })
@@ -287,6 +331,7 @@ async function main() {
     if (requestedChecks.has('render')) {
       await testTripsNewModes(browser)
       await testGeneratedRoutes(browser)
+      await testStaticAndEventManageCopy(browser)
     }
     if (requestedChecks.has('listed-index')) await testListedHome(browser)
     if (requestedChecks.has('form')) await testFormSubmission(browser)
