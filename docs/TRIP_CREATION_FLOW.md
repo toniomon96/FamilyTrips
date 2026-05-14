@@ -125,6 +125,7 @@ Location-aware V1 is search-first, not maps-backed routing. It uses the stay/loc
 - generated manage Share tab exposes copy buttons for stored summary messages
 - generated manage Smart Assist tab exposes the group-chat summary action
 - generated manage Bookings tab lets a trusted editor add arrival/departure flight details and timing from the command center
+- generated manage Bookings and Must-dos tabs let a trusted editor quick-edit booking status/next steps and must-do timing/logistics without opening Advanced Editor
 - manage save/history/restore works
 - visibility can switch listed/unlisted
 - checklist and packing state persists after refresh

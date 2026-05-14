@@ -145,3 +145,12 @@ Durable notes for product decisions, open questions, and why the app changed. Ke
 - UX change: mobile manage pages now use a `Workspace section` picker instead of horizontal chip scrolling, and primary page containers have slightly more side padding with horizontal overflow hidden.
 - Edit change: the Bookings command-center section for trips now has a `Travel details` card where trusted editors can add arrival flight/time, departure flight/time, check-in/departure timing, and travel notes, then save live.
 - Test posture: browser UAT now fills the mobile travel-details quick edit and saves it with the temporary UAT PIN.
+
+## 2026-05-14 - Command Center Booking And Must-Do Quick Edits
+
+- Ask: continue reviewing for bugs and improve what comes next without overstating the result.
+- Fix found during UAT: visible must-do cards could look actionable while only planner-native mini-plans were editable. Browser UAT caught this when a generated Lovers Beach card did not expose `Quick edit`.
+- UX change: generated manage pages now let trusted editors quick-edit trip booking cards and editable must-do mini-plan cards from the command center.
+- Data posture: must-do quick edits update planner mini-plan metadata and, when the card comes from an underlying booking or activity, also patch that booking/activity's status, next step, date, or notes where the current data model supports it.
+- Honest limit: itinerary-only cards remain display-only in the command center until a dedicated day-item editor is built.
+- Test posture: browser UAT now edits travel details, a Golf booking card, and a Lovers Beach must-do card on mobile, then verifies save feedback and cleanup.

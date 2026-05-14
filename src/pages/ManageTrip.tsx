@@ -114,6 +114,14 @@ const VISIBILITY_OPTIONS: SelectOption[] = [
   { value: 'unlisted', label: 'Unlisted' },
 ]
 
+const PLAN_STATUS_OPTIONS: SelectOption[] = [
+  { value: '', label: 'No status' },
+  { value: 'suggested', label: 'Suggested' },
+  { value: 'needs-booking', label: 'Needs booking' },
+  { value: 'needs-confirmation', label: 'Needs confirmation' },
+  { value: 'confirmed', label: 'Confirmed' },
+]
+
 function existingIds(items: { id: string }[]): string[] {
   return items.map((item) => item.id)
 }
@@ -798,10 +806,10 @@ function joinNotes(...parts: (string | undefined)[]): string | undefined {
   return note || undefined
 }
 
-function MiniPlanCard({ plan, sourceRefs }: { plan: MiniPlan; sourceRefs: PlannerSourceRef[] }) {
+function MiniPlanContent({ plan, sourceRefs }: { plan: MiniPlan; sourceRefs: PlannerSourceRef[] }) {
   const sources = getSources(plan.sourceIds, sourceRefs)
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           {plan.category && <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{plan.category}</p>}
@@ -842,6 +850,14 @@ function MiniPlanCard({ plan, sourceRefs }: { plan: MiniPlan; sourceRefs: Planne
           ) : null
         ))}
       </div>
+    </>
+  )
+}
+
+function MiniPlanCard({ plan, sourceRefs }: { plan: MiniPlan; sourceRefs: PlannerSourceRef[] }) {
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <MiniPlanContent plan={plan} sourceRefs={sourceRefs} />
     </article>
   )
 }
@@ -894,28 +910,6 @@ function buildMiniPlans(trip: Trip): MiniPlan[] {
     })
   }
 
-  for (const miniPlan of trip.planner?.miniPlans ?? []) {
-    const typedMiniPlan = miniPlan as PlannerMiniPlan
-    add({
-      id: typedMiniPlan.id,
-      title: typedMiniPlan.title,
-      category: typedMiniPlan.type ?? 'Must-do',
-      status: typedMiniPlan.status,
-      why: typedMiniPlan.why,
-      nextStep: typedMiniPlan.nextStep,
-      notes: joinNotes(
-        typedMiniPlan.recommendedDate ? `Suggested date: ${typedMiniPlan.recommendedDate}.` : undefined,
-        typedMiniPlan.recommendedTimeWindow ? `Window: ${typedMiniPlan.recommendedTimeWindow}.` : undefined,
-      ),
-      sourceIds: typedMiniPlan.sourceIds,
-      recommendedDate: typedMiniPlan.recommendedDate,
-      recommendedTimeWindow: typedMiniPlan.recommendedTimeWindow,
-      logisticsNote: typedMiniPlan.logisticsNote,
-      packingImplication: typedMiniPlan.packingImplication,
-      confidence: typedMiniPlan.confidence,
-    })
-  }
-
   for (const activity of trip.thingsToDo) {
     add({
       id: `activity-${activity.id}`,
@@ -959,6 +953,28 @@ function buildMiniPlans(trip: Trip): MiniPlan[] {
         sourceIds: item.sourceIds,
       })
     }
+  }
+
+  for (const miniPlan of trip.planner?.miniPlans ?? []) {
+    const typedMiniPlan = miniPlan as PlannerMiniPlan
+    add({
+      id: typedMiniPlan.id,
+      title: typedMiniPlan.title,
+      category: typedMiniPlan.type ?? 'Must-do',
+      status: typedMiniPlan.status,
+      why: typedMiniPlan.why,
+      nextStep: typedMiniPlan.nextStep,
+      notes: joinNotes(
+        typedMiniPlan.recommendedDate ? `Suggested date: ${typedMiniPlan.recommendedDate}.` : undefined,
+        typedMiniPlan.recommendedTimeWindow ? `Window: ${typedMiniPlan.recommendedTimeWindow}.` : undefined,
+      ),
+      sourceIds: typedMiniPlan.sourceIds,
+      recommendedDate: typedMiniPlan.recommendedDate,
+      recommendedTimeWindow: typedMiniPlan.recommendedTimeWindow,
+      logisticsNote: typedMiniPlan.logisticsNote,
+      packingImplication: typedMiniPlan.packingImplication,
+      confidence: typedMiniPlan.confidence,
+    })
   }
 
   return Array.from(plans.values()).sort((a, b) => {
@@ -1093,6 +1109,146 @@ function TravelDetailsQuickEditor({
         Enter the trip edit PIN at the top of the page first. These edits save live and will show up for anyone with the trip link.
       </p>
     </section>
+  )
+}
+
+function QuickEditSaveButton({
+  canSave,
+  saveState,
+}: {
+  canSave: boolean
+  saveState: SaveState
+}) {
+  return (
+    <button
+      type="submit"
+      disabled={!canSave}
+      className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+    >
+      {saveState === 'saving' ? 'Saving...' : 'Save live'}
+    </button>
+  )
+}
+
+function BookingQuickEditCard({
+  booking,
+  onChange,
+  canSave,
+  saveState,
+}: {
+  booking: Booking
+  onChange: (booking: Booking) => void
+  canSave: boolean
+  saveState: SaveState
+}) {
+  return (
+    <article className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-bold text-slate-950">{booking.title}</p>
+            <StatusBadge status={booking.status} />
+          </div>
+          {booking.when && <p className="mt-1 text-sm text-slate-500">{booking.when}</p>}
+          {booking.details && <p className="mt-2 text-sm leading-6 text-slate-600">{booking.details}</p>}
+          {booking.nextStep && <p className="mt-2 text-sm text-slate-700"><span className="font-semibold">Next step:</span> {booking.nextStep}</p>}
+        </div>
+        <span className="w-fit rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold capitalize text-slate-600">
+          {booking.kind}
+        </span>
+      </div>
+
+      <details className="mt-3 rounded-2xl bg-slate-50 p-3">
+        <summary className="cursor-pointer text-sm font-semibold text-slate-800">Quick edit</summary>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <SelectInput
+            label="Status"
+            value={booking.status ?? ''}
+            options={PLAN_STATUS_OPTIONS}
+            onChange={(value) => onChange({ ...booking, status: (value || undefined) as PlanItemStatus | undefined })}
+          />
+          <TextInput
+            label="Date"
+            type="date"
+            value={booking.when}
+            onChange={(value) => onChange({ ...booking, when: value || undefined })}
+          />
+          <TextArea
+            label="Next step"
+            value={booking.nextStep}
+            placeholder="What should Logan do next?"
+            onChange={(value) => onChange({ ...booking, nextStep: value || undefined })}
+          />
+          <TextArea
+            label="Details"
+            value={booking.details}
+            placeholder="Flight number, tee time, vendor note, confirmation reminder..."
+            onChange={(value) => onChange({ ...booking, details: value || undefined })}
+          />
+        </div>
+        <div className="mt-3">
+          <QuickEditSaveButton canSave={canSave} saveState={saveState} />
+        </div>
+      </details>
+    </article>
+  )
+}
+
+function MiniPlanQuickEditCard({
+  plan,
+  sourceRefs,
+  onChange,
+  canSave,
+  saveState,
+}: {
+  plan: MiniPlan
+  sourceRefs: PlannerSourceRef[]
+  onChange: (plan: MiniPlan) => void
+  canSave: boolean
+  saveState: SaveState
+}) {
+  return (
+    <article className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+      <MiniPlanContent plan={plan} sourceRefs={sourceRefs} />
+      <details className="mt-3 rounded-2xl bg-slate-50 p-3">
+        <summary className="cursor-pointer text-sm font-semibold text-slate-800">Quick edit</summary>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <SelectInput
+            label="Status"
+            value={plan.status ?? ''}
+            options={PLAN_STATUS_OPTIONS}
+            onChange={(value) => onChange({ ...plan, status: (value || undefined) as PlanItemStatus | undefined })}
+          />
+          <TextInput
+            label="Suggested date"
+            type="date"
+            value={plan.recommendedDate}
+            onChange={(value) => onChange({ ...plan, recommendedDate: value || undefined })}
+          />
+          <TextInput
+            label="Time window"
+            value={plan.recommendedTimeWindow}
+            placeholder="Morning, after lunch, sunset..."
+            onChange={(value) => onChange({ ...plan, recommendedTimeWindow: value || undefined })}
+          />
+          <TextArea
+            label="Next step"
+            value={plan.nextStep}
+            placeholder="Book tee time, ask concierge, confirm transportation..."
+            onChange={(value) => onChange({ ...plan, nextStep: value || undefined })}
+          />
+          <TextArea
+            label="Logistics note"
+            value={plan.logisticsNote}
+            placeholder="Pickup, gear, confirmation, timing, or backup note..."
+            onChange={(value) => onChange({ ...plan, logisticsNote: value || undefined })}
+          />
+        </div>
+        <div className="mt-3">
+          <QuickEditSaveButton canSave={canSave} saveState={saveState} />
+        </div>
+      </details>
+    </article>
   )
 }
 
@@ -1292,7 +1448,81 @@ function TripCommandPanel({
           </p>
         </div>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {miniPlans.slice(0, 16).map((plan) => <MiniPlanCard key={plan.id} plan={plan} sourceRefs={sourceRefs} />)}
+          {miniPlans.slice(0, 16).map((plan) => {
+            const plannerData = trip.planner
+            const storedMiniPlans = plannerData?.miniPlans ?? []
+            const storedIndex = storedMiniPlans.findIndex((item) => item.id === plan.id || item.title.toLowerCase() === plan.title.toLowerCase())
+            const canQuickEditMiniPlan = onPatchTrip && plannerData && !plan.id.startsWith('itinerary-')
+            if (canQuickEditMiniPlan) {
+              return (
+                <MiniPlanQuickEditCard
+                  key={plan.id}
+                  plan={storedIndex >= 0 ? { ...plan, ...storedMiniPlans[storedIndex] } : plan}
+                  sourceRefs={sourceRefs}
+                  canSave={canSave}
+                  saveState={saveState}
+                  onChange={(updatedPlan) => {
+                    const plannerMiniPlan: PlannerMiniPlan = {
+                      id: updatedPlan.id,
+                      title: updatedPlan.title,
+                      type: updatedPlan.category,
+                      status: updatedPlan.status,
+                      why: updatedPlan.why,
+                      nextStep: updatedPlan.nextStep,
+                      sourceIds: updatedPlan.sourceIds,
+                      recommendedDate: updatedPlan.recommendedDate,
+                      recommendedTimeWindow: updatedPlan.recommendedTimeWindow,
+                      logisticsNote: updatedPlan.logisticsNote,
+                      packingImplication: updatedPlan.packingImplication,
+                      confidence:
+                        updatedPlan.confidence === 'high' || updatedPlan.confidence === 'medium' || updatedPlan.confidence === 'low'
+                          ? updatedPlan.confidence
+                          : undefined,
+                    }
+                    const nextMiniPlans = storedMiniPlans.slice()
+                    if (storedIndex >= 0) nextMiniPlans[storedIndex] = plannerMiniPlan
+                    else nextMiniPlans.push(plannerMiniPlan)
+
+                    const patch: Partial<Trip> = { planner: { ...plannerData, miniPlans: nextMiniPlans } }
+                    if (plan.id.startsWith('booking-')) {
+                      const bookingId = plan.id.replace(/^booking-/, '')
+                      patch.bookings = trip.bookings.map((booking) => (
+                        booking.id === bookingId
+                          ? {
+                              ...booking,
+                              status: updatedPlan.status,
+                              nextStep: updatedPlan.nextStep,
+                              when: updatedPlan.recommendedDate ?? booking.when,
+                              details: updatedPlan.logisticsNote ?? updatedPlan.notes ?? booking.details,
+                            }
+                          : booking
+                      ))
+                    }
+                    if (plan.id.startsWith('activity-')) {
+                      const activityId = plan.id.replace(/^activity-/, '')
+                      patch.thingsToDo = trip.thingsToDo.map((activity) => (
+                        activity.id === activityId
+                          ? {
+                              ...activity,
+                              status: updatedPlan.status,
+                              nextStep: updatedPlan.nextStep,
+                              notes: joinNotes(
+                                updatedPlan.notes,
+                                updatedPlan.recommendedDate ? `Suggested date: ${updatedPlan.recommendedDate}.` : undefined,
+                                updatedPlan.recommendedTimeWindow ? `Suggested window: ${updatedPlan.recommendedTimeWindow}.` : undefined,
+                                updatedPlan.logisticsNote ? `Logistics: ${updatedPlan.logisticsNote}` : undefined,
+                              ),
+                            }
+                          : activity
+                      ))
+                    }
+                    onPatchTrip(patch)
+                  }}
+                />
+              )
+            }
+            return <MiniPlanCard key={plan.id} plan={plan} sourceRefs={sourceRefs} />
+          })}
           {miniPlans.length === 0 && (
             <p className="rounded-2xl bg-white p-4 text-sm text-slate-600">
               {isEvent ? 'No must-have moments are listed yet.' : 'No must-do ideas are listed yet.'}
@@ -1332,7 +1562,21 @@ function TripCommandPanel({
           <TravelDetailsQuickEditor trip={trip} onPatchTrip={onPatchTrip} canSave={canSave} saveState={saveState} />
         )}
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {bookingPanelItems.map((item) => <MiniPlanCard key={item.id} sourceRefs={sourceRefs} plan={item} />)}
+          {!isEvent && onPatchTrip
+            ? trip.bookings.map((booking) => (
+                <BookingQuickEditCard
+                  key={booking.id}
+                  booking={booking}
+                  canSave={canSave}
+                  saveState={saveState}
+                  onChange={(updatedBooking) => {
+                    onPatchTrip({
+                      bookings: trip.bookings.map((item) => item.id === updatedBooking.id ? updatedBooking : item),
+                    })
+                  }}
+                />
+              ))
+            : bookingPanelItems.map((item) => <MiniPlanCard key={item.id} sourceRefs={sourceRefs} plan={item} />)}
           {bookingPanelItems.length === 0 && (
             <p className="rounded-2xl bg-white p-4 text-sm text-slate-600">
               {isEvent ? 'No event tasks are listed yet.' : 'No bookings are listed yet.'}

@@ -50,8 +50,8 @@ For trusted family/friends, use the app:
 2. Enter the shared trip edit PIN.
 3. Use **Build my trip** for the smart draft path: add the destination/stay, dates, travelers, trip vibe, pace, and must-do items.
 4. The planner now uses location/stay text, curated packs, and optional live search to build recommendation candidates and must-do mini-plans. It is search-first, not maps-backed routing, so it tells users to confirm transportation, current hours, prices, and availability instead of claiming exact logistics.
-4. Use **Start blank** only when you want an empty starter shell.
-5. The app opens the manage page next with itinerary, restaurants/activities, checklist, packing, bookings, budget placeholders, and copyable messages ready to review.
+5. Use **Start blank** only when you want an empty starter shell.
+6. The app opens the manage page next with itinerary, restaurants/activities, checklist, packing, bookings, budget placeholders, and copyable messages ready to review. Trusted editors can quick-edit travel details, booking status/next steps, and editable must-do timing/logistics from the command center before using the Advanced Editor.
 
 Self-serve trips are Supabase-backed and default to unlisted direct links. They can be changed to listed from the manage page later.
 
