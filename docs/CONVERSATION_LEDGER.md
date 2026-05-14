@@ -72,3 +72,9 @@ Durable notes for product decisions, open questions, and why the app changed. Ke
 - Event posture: the same create flow can generate event-native drafts with run-of-show, tasks, supplies, food, setup/cleanup, budget, and reminders.
 - Retroactive posture: manage pages now expose Smart Assist previews for existing trips. Applying a preview uses the normal save path so version history remains the audit trail.
 - UX posture: source/confidence notes are visible on generated public trip pages, and browser dictation is a progressive enhancement for the big context field.
+
+## 2026-05-14 - Launch Handoff And Readiness Polish
+
+- Ask: Toni wanted the best remaining closeout work knocked out after deploy.
+- Decision: keep the shipped app live, add a trusted-planner handoff for Logan/future users, add a repeatable `npm run ready:production` check, and make the create form more explicit about the context that creates a strong draft.
+- Environment posture: production has the required edit/admin/Supabase env names; live OpenAI research remains optional and should be enabled by adding `OPENAI_API_KEY` plus research envs when Toni wants stronger source-aware generation.

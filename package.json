@@ -14,6 +14,7 @@
     "uat:smart-trip": "powershell -ExecutionPolicy Bypass -File scripts/uat-smart-trip-smoke.ps1 -Scenarios smart-trip,production-smoke",
     "uat:browser": "powershell -ExecutionPolicy Bypass -File scripts/uat-smart-trip-smoke.ps1 -Scenarios browser",
     "uat:production": "powershell -ExecutionPolicy Bypass -File scripts/uat-smart-trip-smoke.ps1 -Scenarios production-smoke",
+    "ready:production": "node scripts/production-readiness.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -10,6 +10,7 @@ The full suite creates a temporary preview deployment with a one-time UAT edit P
 
 Commands:
 
+- `npm run ready:production` - production readiness wrapper: checks Vercel env names, runs non-mutating production UAT smoke, inspects the production domain, and writes a Markdown/JSON report.
 - `npm run uat` - full suite: smart trip, manage edit/history/restore, visibility, checklist/packing, browser, and production smoke.
 - `npm run uat:quick` - core smart-trip smoke plus non-mutating production smoke.
 - `npm run uat:smart-trip` - backward-compatible alias for the quick suite.
@@ -28,6 +29,8 @@ To clean up older Codex-created UAT rows during the same run, set a comma-separa
 `$env:UAT_CLEANUP_SLUGS = 'codex-uat-le-blanc-20260513174343'; npm run uat:quick`
 
 The Markdown report is the one to send Toni. The JSON report is for agents and CI.
+
+`npm run ready:production` is the fastest "can I send this?" check after a manual deploy. It intentionally treats missing `OPENAI_API_KEY` / research envs as a warning, not a failure, because the deterministic planner should still work. If those optional envs are absent, generated trips will be less research-aware.
 
 ## Routes
 

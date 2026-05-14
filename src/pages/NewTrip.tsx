@@ -89,6 +89,10 @@ const HELP_OPTIONS: { id: TripPlanningHelp; label: string }[] = [
   { id: 'give-me-options', label: 'Give me options' },
   { id: 'start-simple', label: 'Start simple' },
 ]
+const CONTEXT_HINTS = {
+  trip: ['Stay/address', 'Flights or drive times', 'Booked plans', 'Must-dos', 'Food preferences', 'Budget/pace', 'Kids or mobility'],
+  event: ['Venue/access', 'Guest count', 'Setup timing', 'Food/drinks', 'Must-have moments', 'Helpers', 'Cleanup rules'],
+}
 
 async function postTrip(payload: Record<string, unknown>): Promise<ApiResult> {
   const response = await fetch('/api/trips', {
@@ -470,6 +474,14 @@ export default function NewTrip() {
                 <span className="text-sm font-medium text-slate-700">Tell us everything you already know</span>
                 <textarea rows={6} value={rawContext} onChange={(event) => setRawContext(event.target.value)} placeholder={isEvent ? 'Paste the invite, guest notes, food ideas, setup needs, timing, people helping, and anything that matters.' : 'Paste texts, lodging notes, flight timing, restaurant ideas, must-dos, budget, kids, food preferences, and anything you would tell a travel agent.'} className={FIELD_CLASS} />
               </label>
+              <div className="rounded-2xl bg-slate-50 p-3 sm:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Best context to include</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(isEvent ? CONTEXT_HINTS.event : CONTEXT_HINTS.trip).map((hint) => (
+                    <span key={hint} className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200">{hint}</span>
+                  ))}
+                </div>
+              </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {mode === 'smart' && (
