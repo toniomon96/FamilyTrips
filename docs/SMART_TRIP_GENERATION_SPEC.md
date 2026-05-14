@@ -1,5 +1,7 @@
 # Smart Trip Generation Spec
 
+> Product note: this spec captured the Le Blanc pilot and the first smart-trip generation layer. The broader command-center rebuild bar now lives in `docs/TRAVEL_COMMAND_CENTER_AUDIT.md`. Public create-flow examples should stay neutral; Logan and Morgan are a test/pilot scenario, not the default public sample.
+
 ## Product Intent
 
 FamilyTrips should feel like a trusted person helping the group chat, not a blank database form.

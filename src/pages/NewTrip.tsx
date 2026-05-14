@@ -30,13 +30,15 @@ const FIELD_CLASS =
   'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500'
 
 const VIBE_OPTIONS = [
-  'honeymoon',
   'relaxed',
-  'romantic',
-  'resort-heavy',
-  'luxury',
-  'adventure',
   'food-focused',
+  'adventure',
+  'family',
+  'celebration',
+  'beach / resort',
+  'romantic',
+  'luxury',
+  'honeymoon',
   'no early mornings',
 ]
 
@@ -92,11 +94,11 @@ export default function NewTrip() {
   const [location, setLocation] = useState('')
   const [startDate, setStartDate] = useState(today)
   const [endDate, setEndDate] = useState(today)
-  const [template, setTemplate] = useState<TripTemplateId>('honeymoon')
+  const [template, setTemplate] = useState<TripTemplateId>('general')
   const [travelers, setTravelers] = useState('')
   const [stayName, setStayName] = useState('')
   const [brief, setBrief] = useState('')
-  const [vibe, setVibe] = useState<string[]>(['honeymoon', 'relaxed', 'romantic', 'resort-heavy'])
+  const [vibe, setVibe] = useState<string[]>(['relaxed'])
   const [pace, setPace] = useState<TripPace>('very-loose')
   const [planningHelp, setPlanningHelp] = useState<TripPlanningHelp>('mostly-plan-for-me')
   const [mustDos, setMustDos] = useState('')
@@ -254,7 +256,7 @@ export default function NewTrip() {
                   setName(event.target.value)
                   if (!slugWasEdited) setCustomSlug(slugifyTripSlug(event.target.value))
                 }}
-                placeholder="Logan + Morgan Honeymoon"
+                placeholder="Family beach weekend"
                 className={FIELD_CLASS}
               />
             </div>
@@ -272,7 +274,7 @@ export default function NewTrip() {
                     setSlugWasEdited(true)
                     setCustomSlug(slugifyTripSlug(event.target.value))
                   }}
-                  placeholder="logan-morgan-honeymoon"
+                  placeholder="family-beach-weekend"
                   className="w-full rounded-r-xl border-0 bg-transparent px-2 py-2 text-sm text-slate-900 focus:outline-none"
                 />
               </div>
@@ -294,7 +296,7 @@ export default function NewTrip() {
                 required
                 value={location}
                 onChange={(event) => setLocation(event.target.value)}
-                placeholder="Le Blanc Spa Resort Los Cabos"
+                placeholder="Charleston, SC or Bluebird Beach House"
                 className={FIELD_CLASS}
               />
             </div>
@@ -330,7 +332,7 @@ export default function NewTrip() {
                 type="text"
                 value={travelers}
                 onChange={(event) => setTravelers(event.target.value)}
-                placeholder="Logan, Morgan"
+                placeholder="Alex, Jordan, the kids"
                 className={FIELD_CLASS}
               />
             </div>
@@ -345,7 +347,7 @@ export default function NewTrip() {
                   rows={4}
                   value={brief}
                   onChange={(event) => setBrief(event.target.value)}
-                  placeholder="Honeymoon at Le Blanc. Keep it relaxed and romantic. They definitely want golf, horseback riding on the beach, and Lovers Beach."
+                  placeholder="A relaxed long weekend with family. We want easy meals, one special dinner, beach time, and room for naps."
                   className={FIELD_CLASS}
                 />
               </div>
@@ -406,7 +408,7 @@ export default function NewTrip() {
                   rows={4}
                   value={mustDos}
                   onChange={(event) => setMustDos(event.target.value)}
-                  placeholder={"Golf\nHorseback riding on the beach\nLovers Beach"}
+                  placeholder={"Dinner reservation\nBeach day\nOne local activity"}
                   className={FIELD_CLASS}
                 />
               </div>
@@ -436,7 +438,7 @@ export default function NewTrip() {
                 type="text"
                 value={stayName}
                 onChange={(event) => setStayName(event.target.value)}
-                placeholder="Resort, hotel, house..."
+                placeholder="Hotel, rental house, venue..."
                 className={FIELD_CLASS}
               />
             </div>
@@ -447,7 +449,7 @@ export default function NewTrip() {
                 type="text"
                 value={createdBy}
                 onChange={(event) => setCreatedBy(event.target.value)}
-                placeholder="Logan"
+                placeholder="Your name"
                 className={FIELD_CLASS}
               />
             </div>

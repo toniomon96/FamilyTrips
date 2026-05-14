@@ -50,3 +50,15 @@ Durable notes for product decisions, open questions, and why the app changed. Ke
 - Report posture: every run writes a machine-readable JSON report and a Toni-readable Markdown report under `uat-results/`.
 - Cleanup posture: Codex-created UAT rows stay namespaced as `codex-uat-*`; cleanup now removes dynamic trip rows, history rows, checklist state, and UAT checklist items.
 - Safety posture: the suite creates a one-time temporary UAT PIN for preview deployments and never needs to print or use the permanent edit PIN.
+
+## 2026-05-13 - Travel Command Center Product Correction
+
+- Ask: Toni called out that the smart-trip draft is not yet context-aware enough, the phone flow is too long, the suggestions are too generic, and must-dos are not being turned into real plans.
+- Decision: treat the current smart-trip feature as infrastructure plus a pilot, not the final product bar.
+- Product posture: FamilyTrips should become an all-in-one command center for trips and family events, focused on itinerary, shared planning, and travel-agent-like help.
+- UX direction: replace the long form with a 5 to 7 minute mobile wizard, led by a big "Tell us everything" field, optional structured details, smart follow-up questions, and a review screen before manage.
+- Intelligence direction: use hybrid generation with curated packs, live search, official sources, location/timing awareness, source notes, and weak-draft warnings when the brief is thin.
+- Event direction: support birthdays, gatherings, game nights, sports games, pro/amusement outings, family gatherings, weddings, bachelor parties, and showers with event-native run-of-show, food, supplies, setup, cleanup, guest, and budget planning.
+- Retroactive direction: add Smart Assist on existing trips/events to fill gaps or improve sections through previewed changes saved to history.
+- Hotfix: public `/trips/new` examples should be neutral. Logan and Morgan remain a UAT/pilot case, not the public default example.
+- Spec: see `docs/TRAVEL_COMMAND_CENTER_AUDIT.md`.

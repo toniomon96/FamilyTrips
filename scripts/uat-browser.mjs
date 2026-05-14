@@ -194,6 +194,7 @@ async function testFormSubmission(browser) {
       await page.getByLabel('Start date').fill('2026-07-19')
       await page.getByLabel('End date').fill('2026-07-23')
       await page.getByLabel('Travelers').fill('Logan, Morgan')
+      await page.getByLabel('Template').selectOption('honeymoon')
       await page.getByLabel('Trip brief').fill(
         'Honeymoon at Le Blanc Los Cabos with golf, horseback riding on the beach, Lovers Beach, relaxed resort time, and dinner reservation reminders.',
       )
