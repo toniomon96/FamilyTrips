@@ -389,6 +389,19 @@ function parseResearchBundle(value: unknown): ResearchBundle | null {
   }
 }
 
+function summarizeOpenAiErrorBody(body: string): string | null {
+  if (!body.trim()) return null
+  try {
+    const parsed = JSON.parse(body) as unknown
+    if (isRecord(parsed) && isRecord(parsed.error) && typeof parsed.error.message === 'string') {
+      return parsed.error.message.slice(0, 240)
+    }
+  } catch {
+    // Fall through to a compact text snippet.
+  }
+  return body.replace(/\s+/g, ' ').trim().slice(0, 240)
+}
+
 function createOpenAiResearcher(apiKey: string | undefined, model: string | undefined): TripResearcher | undefined {
   const researchEnabled = (process.env.TRIP_RESEARCH_ENABLED ?? '1').toLowerCase()
   if (!apiKey || researchEnabled === '0' || researchEnabled === 'false') return undefined
@@ -437,10 +450,14 @@ function createOpenAiResearcher(apiKey: string | undefined, model: string | unde
     })
 
     if (!response.ok) {
+      const errorSummary = summarizeOpenAiErrorBody(await response.text())
       return {
         sourceRefs: [],
         insights: [],
-        notes: [`Live web research request failed with status ${response.status}.`],
+        notes: [
+          `Live web research request failed with status ${response.status}.`,
+          ...(errorSummary ? [`OpenAI research error: ${errorSummary}`] : []),
+        ],
         usedSearch: false,
       }
     }
