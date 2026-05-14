@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { TripOverrideHistoryRow, TripOverrideRow } from '../utils/tripOverrides'
 import { editableFieldsFromTrip } from '../utils/tripOverrides'
 import { okc } from '../data/trips/okc'
+import { familyCookout } from '../data/trips/family-cookout'
 import { runTripOverrideAction, type TripOverrideStore } from './tripOverrideActions'
 
 function createStore(seedHistory: TripOverrideHistoryRow[] = [], seedCurrent: TripOverrideRow | null = null): {
@@ -171,6 +172,8 @@ describe('trip override API action handler', () => {
     if (!result.body.ok || !('assist' in result.body)) return
     expect(result.body.assist.summary.some((item) => item.includes('Golf'))).toBe(true)
     expect(result.body.assist.mergedTrip.bookings.some((booking) => booking.title === 'Golf')).toBe(true)
+    expect(result.body.assist.sections.some((section) => section.id === 'bookings')).toBe(true)
+    expect(result.body.assist.sections.every((section) => section.fields.length > 0)).toBe(true)
   })
 
   it('uses saved planner recommendations and mini-plans for location-aware Smart Assist', async () => {
@@ -251,10 +254,67 @@ describe('trip override API action handler', () => {
     expect(state.current?.version).toBe(1)
     if (restaurants.body.ok && 'assist' in restaurants.body) {
       expect(restaurants.body.assist.mergedTrip.thingsToDo.some((item) => item.name === 'Lumiere')).toBe(true)
+      expect(restaurants.body.assist.sections.some((section) => section.id === 'recommendations')).toBe(true)
     }
     if (miniPlans.body.ok && 'assist' in miniPlans.body) {
       expect(miniPlans.body.assist.mergedTrip.bookings.some((booking) => booking.title === 'Play a round of golf')).toBe(true)
       expect(miniPlans.body.assist.mergedTrip.packing?.some((item) => item.title.includes('Play a round of golf'))).toBe(true)
+      expect(miniPlans.body.assist.sections.map((section) => section.id)).toEqual(
+        expect.arrayContaining(['bookings', 'checklist', 'packing']),
+      )
+    }
+  })
+
+  it('previews event-native Smart Assist sections for dynamic events', async () => {
+    const dynamicCurrent: TripOverrideRow = {
+      trip_slug: 'codex-family-cookout',
+      data: {
+        ...editableFieldsFromTrip(familyCookout),
+        name: 'Codex Family Cookout',
+        visibility: 'unlisted',
+        itinerary: [{ date: familyCookout.startDate, title: 'Cookout day', items: [] }],
+        eventTasks: [],
+        supplies: [],
+      },
+      version: 1,
+      updated_at: '2026-01-01T00:00:00.000Z',
+      updated_by: 'creator',
+      source: 'dynamic',
+      visibility: 'unlisted',
+      created_at: '2026-01-01T00:00:00.000Z',
+      created_by: 'Codex UAT',
+    }
+    const state = createStore([], dynamicCurrent)
+    const runOfShow = await runTripOverrideAction(
+      {
+        action: 'assistPreview',
+        tripSlug: 'codex-family-cookout',
+        pin: 'editor',
+        assistAction: 'event-run-of-show',
+      },
+      state.store,
+      { adminPin: 'admin', editorPin: 'editor' },
+    )
+    const supplies = await runTripOverrideAction(
+      {
+        action: 'assistPreview',
+        tripSlug: 'codex-family-cookout',
+        pin: 'editor',
+        assistAction: 'event-supplies',
+      },
+      state.store,
+      { adminPin: 'admin', editorPin: 'editor' },
+    )
+
+    expect(runOfShow.status).toBe(200)
+    expect(supplies.status).toBe(200)
+    if (runOfShow.body.ok && 'assist' in runOfShow.body) {
+      expect(runOfShow.body.assist.mergedTrip.itinerary[0]?.items.some((item) => item.title === 'Host setup window')).toBe(true)
+      expect(runOfShow.body.assist.sections.map((section) => section.id)).toEqual(expect.arrayContaining(['itinerary', 'event']))
+    }
+    if (supplies.body.ok && 'assist' in supplies.body) {
+      expect(supplies.body.assist.mergedTrip.supplies?.some((item) => item.title === 'Serving table basics')).toBe(true)
+      expect(supplies.body.assist.sections.some((section) => section.id === 'event')).toBe(true)
     }
   })
 

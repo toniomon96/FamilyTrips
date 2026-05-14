@@ -4,9 +4,8 @@ Family Trips is a casual shared planning hub for trips and family events. The go
 
 ## Now
 
-- Finish verification and deploy the Location-Aware Planner V1 working tree. V1 uses stay/location text, curated packs, and live search candidates to shape restaurants, activities, must-do mini-plans, logistics notes, and itinerary placement. It is not maps-backed routing and should not claim exact distance, travel time, hours, prices, or availability.
-- Commit, push, and manually deploy the current local form-validation/progress/AI-research fixes before sending the app to Logan or other users.
-- After deploy, run `npm run ready:production` and `npm run uat:production` against `https://thegroupchat.voyage`.
+- Keep verifying the Location-Aware Planner V1 production flow after meaningful changes. V1 uses stay/location text, curated packs, and live search candidates to shape restaurants, activities, must-do mini-plans, logistics notes, and itinerary placement. It is not maps-backed routing and should not claim exact distance, travel time, hours, prices, or availability.
+- After each deploy, run `npm run ready:production` and `npm run uat:production` against `https://thegroupchat.voyage`.
 - Use `docs/TRIP_CREATION_FLOW.md` as the source of truth for how the self-serve form works and what the UAT reports prove.
 - Keep using `docs/DEPLOY_SMOKE_TEST.md` after deploys, especially for `/`, `/trips/new`, a listed trip, `/logan-bachelor`, checklist, packing, budget, smart-trip creation, and mobile layout.
 - Do one real-user manual smoke after deploy: create a disposable unlisted trip through the public site, confirm progress states are clear, accept the draft, open manage, and delete/hide the test data.
@@ -15,12 +14,10 @@ Family Trips is a casual shared planning hub for trips and family events. The go
 
 ## Next
 
-- Add a section-level Smart Assist diff UI so Toni/users can apply just restaurants, activities, logistics notes, checklist/packing, or itinerary pacing changes instead of applying a full preview all at once.
-- Add section-level regeneration after the first smart draft: regenerate itinerary, dining ideas, things to do, checklist, or packing with a preview before replacing existing content.
-- Add stronger post-accept guidance for first-time users: "review these 3 things first," "copy this link," and "send this summary."
+- Add section-level regeneration after the first smart draft: regenerate itinerary, dining ideas, things to do, checklist, or packing with a preview before replacing existing content. Current Smart Assist previews can already apply selected changed sections, but regeneration still uses deterministic actions rather than a full research pass per section.
+- Add deeper post-accept guidance for first-time users, including better copy blocks and clearer "send this to the group" summaries.
 - Expand destination packs beyond the Le Blanc Los Cabos pilot as real family/friend trips come up.
-- Add lightweight event support for cookouts, birthdays, get-togethers, and family gatherings without changing the app into SaaS. Initial support is based on `kind: 'event'`, event food, supplies, tasks, and copy blocks.
-- Keep event planning in the same vibe as trips: one shared link, simple pages, no accounts, no admin screens, and copy buttons for group chat.
+- Keep event planning in the same vibe as trips: one shared link, simple pages, no accounts, no admin screens, and copy buttons for group chat. Event Smart Assist now has run-of-show and supplies/assignment actions, but event subtypes still need richer templates over time.
 - Add event-friendly content where it naturally helps:
   - Schedule or day-of plan
   - Food and drinks

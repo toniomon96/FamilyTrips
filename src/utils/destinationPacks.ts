@@ -187,6 +187,76 @@ const LE_BLANC_LOS_CABOS: DestinationPack = {
 
 export const DESTINATION_PACKS: DestinationPack[] = [LE_BLANC_LOS_CABOS]
 
+export type DestinationPackValidationError = {
+  packId: string
+  path: string
+  message: string
+}
+
+function addPackError(
+  errors: DestinationPackValidationError[],
+  packId: string,
+  path: string,
+  message: string,
+) {
+  errors.push({ packId, path, message })
+}
+
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+function validatePackItem(
+  errors: DestinationPackValidationError[],
+  pack: DestinationPack,
+  section: 'restaurants' | 'activities' | 'contacts',
+  item: DestinationPackItem,
+  seenIds: Set<string>,
+) {
+  const path = `${section}.${item.id || 'missing-id'}`
+  if (!item.id.trim()) addPackError(errors, pack.id, path, 'Item id is required.')
+  if (seenIds.has(item.id)) addPackError(errors, pack.id, path, `Duplicate item id "${item.id}".`)
+  seenIds.add(item.id)
+  if (!item.name.trim()) addPackError(errors, pack.id, path, 'Item name is required.')
+  if (!item.category.trim()) addPackError(errors, pack.id, path, 'Item category is required.')
+  if (!item.notes.trim()) addPackError(errors, pack.id, path, 'Item notes are required so recommendations explain why they fit.')
+  if (item.url && !item.url.startsWith('tel:') && !isValidHttpUrl(item.url)) {
+    addPackError(errors, pack.id, path, `Invalid URL "${item.url}".`)
+  }
+}
+
+export function validateDestinationPacks(packs: DestinationPack[] = DESTINATION_PACKS): DestinationPackValidationError[] {
+  const errors: DestinationPackValidationError[] = []
+  const packIds = new Set<string>()
+
+  for (const pack of packs) {
+    if (!pack.id.trim()) addPackError(errors, pack.id || 'missing-id', 'id', 'Pack id is required.')
+    if (packIds.has(pack.id)) addPackError(errors, pack.id, 'id', `Duplicate pack id "${pack.id}".`)
+    packIds.add(pack.id)
+    if (!pack.name.trim()) addPackError(errors, pack.id, 'name', 'Pack name is required.')
+    if (!pack.location.trim()) addPackError(errors, pack.id, 'location', 'Pack location is required.')
+    if (!pack.address.trim()) addPackError(errors, pack.id, 'address', 'Pack address or area is required.')
+    if (pack.matchers.length === 0) addPackError(errors, pack.id, 'matchers', 'At least one matcher is required.')
+    if (pack.matchers.some((matcher) => !matcher.trim())) addPackError(errors, pack.id, 'matchers', 'Matchers cannot be blank.')
+    if (pack.sourceUrls.length === 0) addPackError(errors, pack.id, 'sourceUrls', 'At least one source URL is required.')
+    for (const [index, url] of pack.sourceUrls.entries()) {
+      if (!isValidHttpUrl(url)) addPackError(errors, pack.id, `sourceUrls.${index}`, `Invalid source URL "${url}".`)
+    }
+
+    const itemIds = new Set<string>()
+    for (const item of pack.restaurants) validatePackItem(errors, pack, 'restaurants', item, itemIds)
+    for (const item of pack.activities) validatePackItem(errors, pack, 'activities', item, itemIds)
+    for (const item of pack.contacts) validatePackItem(errors, pack, 'contacts', item, itemIds)
+  }
+
+  return errors
+}
+
 function normalizeMatcher(value: string): string {
   return value
     .trim()

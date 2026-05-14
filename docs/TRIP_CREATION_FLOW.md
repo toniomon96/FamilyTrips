@@ -109,6 +109,8 @@ Location-aware V1 is search-first, not maps-backed routing. It uses the stay/loc
 - generated planning language does not claim exact distance, travel time, prices, hours, or availability without a maps/availability provider
 - malformed AI output falls back safely
 - live-search source mode stays visible even if the composer is disabled or falls back
+- destination packs validate for duplicate IDs, required matchers/source URLs, and malformed URLs
+- Smart Assist previews expose changed sections so a user can apply only itinerary, recommendations, bookings, checklist, packing, budget, event details, share messages, or planner notes
 
 `npm run uat` proves the traveler lifecycle against a real temporary Vercel deployment:
 
@@ -143,5 +145,6 @@ Location-aware V1 is search-first, not maps-backed routing. It uses the stay/loc
 - Unlisted is a convenience/privacy-by-link behavior, not authentication.
 - Location-aware V1 does not have real maps, distance routing, live availability, exact hours, exact prices, or weather-aware packing yet.
 - Destination intelligence is strongest where curated packs or live search produce good source refs.
+- Destination packs are code-backed in this version. `npm run validate:data` checks the pack file for duplicate IDs and malformed URLs, and unit tests validate the pack shape, but adding a new pack is still a developer task.
 - The normal UAT proves the deterministic/curated path by default; `uat:ai-production` is the separate proof for live research because it spends OpenAI tokens.
-- Current fixes must still be committed, pushed, and deployed before the production site reflects them.
+- After any new local fixes, commit, push, deploy, and rerun production smoke before assuming the public site reflects them.

@@ -3,6 +3,7 @@ import path from 'node:path'
 import process from 'node:process'
 
 const tripsDir = path.resolve('src/data/trips')
+const destinationPacksFile = path.resolve('src/utils/destinationPacks.ts')
 const files = fs
   .readdirSync(tripsDir)
   .filter((file) => file.endsWith('.ts') && file !== 'index.ts')
@@ -51,9 +52,32 @@ for (const file of files) {
   }
 }
 
+if (fs.existsSync(destinationPacksFile)) {
+  const source = fs.readFileSync(destinationPacksFile, 'utf8')
+  const ids = [...source.matchAll(/\bid:\s*'([^']+)'/g)].map((match) => match[1])
+  const seen = new Set()
+  for (const id of ids) {
+    if (seen.has(id)) add(destinationPacksFile, `duplicate destination-pack id "${id}"`)
+    seen.add(id)
+  }
+
+  const urls = [...source.matchAll(/https?:\/\/[^'"\s)]+/g)].map((match) => match[0])
+  for (const url of urls) {
+    if (!validUrl(url)) add(destinationPacksFile, `invalid destination-pack URL "${url}"`)
+  }
+
+  if (!/matchers:\s*\[[\s\S]*?\]/.test(source)) {
+    add(destinationPacksFile, 'destination packs must include matcher text')
+  }
+
+  if (!/sourceUrls:\s*\[[\s\S]*?https?:\/\//.test(source)) {
+    add(destinationPacksFile, 'destination packs must include source URLs')
+  }
+}
+
 if (errors.length > 0) {
   console.error(errors.join('\n'))
   process.exit(1)
 }
 
-console.log(`Validated ${files.length} trip data files.`)
+console.log(`Validated ${files.length} trip data files and destination packs.`)

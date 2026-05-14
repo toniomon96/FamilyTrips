@@ -30,10 +30,11 @@ import {
   editableFieldsFromTrip,
   makeStableIdFromLabel,
   validateEditableTrip,
+  type TripOverrideData,
   type TripOverrideHistoryRow,
   type TripOverrideRow,
 } from '../utils/tripOverrides'
-import type { SmartAssistAction, SmartAssistPreview } from '../utils/tripAssist'
+import type { SmartAssistAction, SmartAssistPreview, SmartAssistSectionId } from '../utils/tripAssist'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 type FieldKind = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'checkbox' | 'url' | 'tel'
@@ -719,6 +720,10 @@ function StatusBadge({ status }: { status?: PlanItemStatus }) {
   )
 }
 
+function needsAction(status?: PlanItemStatus): boolean {
+  return status === 'needs-booking' || status === 'needs-confirmation'
+}
+
 function CommandTabs({
   activePanel,
   onChange,
@@ -977,7 +982,7 @@ function TripCommandPanel({
       nextStep: item.nextStep,
       notes: item.notes,
     })),
-  ].filter((item) => item.status === 'needs-booking' || item.status === 'needs-confirmation')
+  ].filter((item) => needsAction(item.status))
 
   if (activePanel === 'overview') {
     return (
@@ -1333,6 +1338,7 @@ export default function ManageTrip() {
   const [assistAction, setAssistAction] = useState<SmartAssistAction>('fill-missing')
   const [assistNote, setAssistNote] = useState('')
   const [assistPreview, setAssistPreview] = useState<SmartAssistPreview | null>(null)
+  const [selectedAssistSections, setSelectedAssistSections] = useState<SmartAssistSectionId[]>([])
   const [activePanel, setActivePanel] = useState<CommandPanel>('overview')
 
   useEffect(() => {
@@ -1453,6 +1459,68 @@ export default function ManageTrip() {
 
   const canSave = pin.trim().length > 0 && dirty && validationErrors.length === 0 && saveState !== 'saving'
   const showGeneratedDraftPanel = searchParams.get('created') === '1' && searchParams.get('draft') === 'generated'
+  const postCreateActions = useMemo(() => {
+    const bookingCount = draft.kind === 'event'
+      ? (draft.eventTasks ?? []).filter((item) => needsAction(item.status)).length
+      : draft.bookings.filter((item) => needsAction(item.status)).length
+    const mustDoCount = draft.planner?.miniPlans?.length ?? draft.thingsToDo.length
+    const recommendationCount = draft.planner?.recommendations?.length ?? 0
+    return [
+      {
+        title: draft.kind === 'event' ? 'Review the run of show' : 'Review itinerary flow',
+        detail: draft.kind === 'event'
+          ? `${draft.itinerary.length} day-of plan block${draft.itinerary.length === 1 ? '' : 's'} to scan before sharing.`
+          : `${draft.itinerary.length} day${draft.itinerary.length === 1 ? '' : 's'} to scan for pacing and downtime.`,
+        panel: 'itinerary' as CommandPanel,
+      },
+      {
+        title: draft.kind === 'event' ? 'Confirm event tasks' : 'Book and confirm',
+        detail: bookingCount > 0
+          ? `${bookingCount} item${bookingCount === 1 ? '' : 's'} need booking or confirmation.`
+          : 'No urgent booking or confirmation items are flagged yet.',
+        panel: 'bookings' as CommandPanel,
+      },
+      {
+        title: draft.kind === 'event' ? 'Check key moments' : 'Check must-do mini-plans',
+        detail: mustDoCount > 0
+          ? `${mustDoCount} priority item${mustDoCount === 1 ? '' : 's'} have next steps or should be reviewed.`
+          : 'No must-dos are structured yet; Smart Assist can help if you add context.',
+        panel: 'mustDos' as CommandPanel,
+      },
+      {
+        title: 'Share the simple version',
+        detail: recommendationCount > 0
+          ? `${recommendationCount} recommendation${recommendationCount === 1 ? '' : 's'} are stored; copy the link or summary after review.`
+          : 'Copy the link or summary after the first review pass.',
+        panel: 'share' as CommandPanel,
+      },
+    ]
+  }, [draft])
+  const assistOptions = useMemo<SelectOption[]>(() => {
+    if (draft.kind === 'event') {
+      return [
+        { value: 'fill-missing', label: 'Fill missing event sections' },
+        { value: 'event-run-of-show', label: 'Improve event run of show' },
+        { value: 'event-supplies', label: 'Build supplies / assignments' },
+        { value: 'packing-checklist', label: 'Build event tasks / supplies' },
+        { value: 'logistics-notes', label: 'Add logistics notes' },
+        { value: 'looser-day', label: 'Make the event looser' },
+        { value: 'tighter-day', label: 'Tighten open blocks' },
+      ]
+    }
+    return [
+      { value: 'fill-missing', label: 'Fill missing sections' },
+      { value: 'improve-itinerary', label: 'Improve itinerary' },
+      { value: 'booking-reminders', label: 'Create booking reminders' },
+      { value: 'packing-checklist', label: 'Build checklist / packing' },
+      { value: 'improve-restaurants', label: 'Improve restaurants near stay' },
+      { value: 'improve-activities', label: 'Improve activities near stay' },
+      { value: 'must-do-mini-plans', label: 'Turn must-dos into mini-plans' },
+      { value: 'logistics-notes', label: 'Add logistics notes' },
+      { value: 'looser-day', label: 'Make the plan looser' },
+      { value: 'tighter-day', label: 'Tighten open days' },
+    ]
+  }, [draft.kind])
 
   async function handleCopyTripLink() {
     const tripUrl = `${window.location.origin}/${draft.slug}`
@@ -1483,13 +1551,36 @@ export default function ManageTrip() {
       setServerErrors(result.validationErrors ?? [])
       return
     }
-    setAssistPreview(result.assist ?? null)
+    const assist = result.assist ?? null
+    setAssistPreview(assist)
+    setSelectedAssistSections(assist?.sections.map((section) => section.id) ?? [])
     setSaveState('idle')
     setMessage(result.assist?.summary.length ? 'Smart Assist preview ready.' : 'Smart Assist did not find a safe automatic change.')
   }
 
   async function handleApplySmartAssist() {
     if (!assistPreview) return
+    if (selectedAssistSections.length === 0) {
+      setSaveState('error')
+      setMessage('Choose at least one preview section to apply.')
+      return
+    }
+    const selectedSectionIds = new Set(selectedAssistSections)
+    const selectedFields = new Set<keyof TripOverrideData>()
+    for (const section of assistPreview.sections) {
+      if (!selectedSectionIds.has(section.id)) continue
+      for (const field of section.fields) selectedFields.add(field)
+    }
+    if (selectedFields.size === 0) {
+      setSaveState('error')
+      setMessage('The selected preview sections did not include any data changes.')
+      return
+    }
+    const selectedData = editableFieldsFromTrip(draft) as TripOverrideData
+    const previewData = assistPreview.data as Record<string, unknown>
+    for (const field of selectedFields) {
+      ;(selectedData as Record<string, unknown>)[field as string] = previewData[field as string]
+    }
     setSaveState('saving')
     setMessage(null)
     setServerErrors([])
@@ -1497,7 +1588,7 @@ export default function ManageTrip() {
       action: 'save',
       tripSlug: draft.slug,
       pin,
-      data: assistPreview.data,
+      data: selectedData,
       updatedBy: 'Smart Assist',
     })
     if (!result.ok) {
@@ -1508,6 +1599,7 @@ export default function ManageTrip() {
     }
     replaceFromApi(result)
     setAssistPreview(null)
+    setSelectedAssistSections([])
     setSaveState('saved')
     setMessage(`Smart Assist applied as version ${result.row?.version ?? ''}.`.trim())
   }
@@ -1588,10 +1680,17 @@ export default function ManageTrip() {
                 <h2 className="mt-1 text-2xl font-bold text-slate-950">Your first trip plan is ready to review.</h2>
               </div>
               <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 sm:grid-cols-2">
-                <p className="rounded-2xl bg-white px-3 py-2">Review the itinerary flow and move anything that feels too packed.</p>
-                <p className="rounded-2xl bg-white px-3 py-2">Confirm restaurants, dress codes, and must-do activity logistics.</p>
-                <p className="rounded-2xl bg-white px-3 py-2">Use bookings and checklist items as the reservation follow-up list.</p>
-                <p className="rounded-2xl bg-white px-3 py-2">Open copyable messages for a ready-to-send trip summary.</p>
+                {postCreateActions.map((action) => (
+                  <button
+                    key={action.title}
+                    type="button"
+                    onClick={() => setActivePanel(action.panel)}
+                    className="rounded-2xl bg-white px-3 py-3 text-left transition hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <span className="block font-semibold text-slate-950">{action.title}</span>
+                    <span className="mt-1 block text-xs leading-5 text-slate-600">{action.detail}</span>
+                  </button>
+                ))}
               </div>
             </div>
             <div className="flex flex-wrap gap-2 lg:justify-end">
@@ -1648,19 +1747,12 @@ export default function ManageTrip() {
             <SelectInput
               label="Assist action"
               value={assistAction}
-              onChange={(value) => setAssistAction(value as SmartAssistAction)}
-              options={[
-                { value: 'fill-missing', label: 'Fill missing sections' },
-                { value: 'improve-itinerary', label: 'Improve itinerary' },
-                { value: 'booking-reminders', label: 'Create booking reminders' },
-                { value: 'packing-checklist', label: 'Build checklist / packing' },
-                { value: 'improve-restaurants', label: 'Improve restaurants near stay' },
-                { value: 'improve-activities', label: 'Improve activities near stay' },
-                { value: 'must-do-mini-plans', label: 'Turn must-dos into mini-plans' },
-                { value: 'logistics-notes', label: 'Add logistics notes' },
-                { value: 'looser-day', label: 'Make the plan looser' },
-                { value: 'tighter-day', label: 'Tighten open days' },
-              ]}
+              onChange={(value) => {
+                setAssistAction(value as SmartAssistAction)
+                setAssistPreview(null)
+                setSelectedAssistSections([])
+              }}
+              options={assistOptions}
             />
             <TextArea
               label="Optional instruction"
@@ -1685,11 +1777,78 @@ export default function ManageTrip() {
                   <p key={warning} className="mt-2 text-sm text-amber-800">{warning}</p>
                 ))}
               </div>
+              {assistPreview.sections.length > 0 ? (
+                <div className="rounded-2xl border border-blue-100 bg-white p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-slate-950">Choose what to apply</p>
+                      <p className="text-sm text-slate-600">Only selected sections will be saved live.</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700"
+                        onClick={() => setSelectedAssistSections(assistPreview.sections.map((section) => section.id))}
+                      >
+                        All
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700"
+                        onClick={() => setSelectedAssistSections([])}
+                      >
+                        None
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {assistPreview.sections.map((section) => {
+                      const selected = selectedAssistSections.includes(section.id)
+                      return (
+                        <label key={section.id} className="flex min-h-16 items-start gap-3 rounded-2xl bg-slate-50 p-3 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={(event) => {
+                              setSelectedAssistSections((current) =>
+                                event.target.checked
+                                  ? Array.from(new Set([...current, section.id]))
+                                  : current.filter((id) => id !== section.id),
+                              )
+                            }}
+                            className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span>
+                            <span className="block font-semibold text-slate-950">{section.label}</span>
+                            <span className="block text-xs leading-5 text-slate-600">{section.summary}</span>
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  This preview did not produce section-level changes to apply.
+                </p>
+              )}
               <div className="flex flex-wrap gap-2">
-                <button type="button" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={handleApplySmartAssist}>
-                  Apply and save live
+                <button
+                  type="button"
+                  className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                  disabled={selectedAssistSections.length === 0}
+                  onClick={handleApplySmartAssist}
+                >
+                  Apply selected and save live
                 </button>
-                <button type="button" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700" onClick={() => setAssistPreview(null)}>
+                <button
+                  type="button"
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                  onClick={() => {
+                    setAssistPreview(null)
+                    setSelectedAssistSections([])
+                  }}
+                >
                   Dismiss preview
                 </button>
               </div>

@@ -128,7 +128,9 @@ function parseBody(body: unknown): TripOverrideRequestBody | null {
       assistAction !== 'improve-restaurants' &&
       assistAction !== 'improve-activities' &&
       assistAction !== 'must-do-mini-plans' &&
-      assistAction !== 'logistics-notes'
+      assistAction !== 'logistics-notes' &&
+      assistAction !== 'event-run-of-show' &&
+      assistAction !== 'event-supplies'
     ) {
       return null
     }

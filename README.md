@@ -81,7 +81,7 @@ npm run dev      # dev server at http://localhost:5173
 npm run build    # typecheck + production build into dist/
 npm run lint     # eslint
 npm run test     # focused unit tests for fragile trip rules
-npm run validate:data # check trip/event data for obvious mistakes
+npm run validate:data # check trip/event data and destination packs for obvious mistakes
 npm run uat      # full temporary-deployment UAT with cleanup
 npm run preview  # preview the production build
 ```

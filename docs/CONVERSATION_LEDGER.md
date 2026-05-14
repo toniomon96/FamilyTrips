@@ -113,3 +113,11 @@ Durable notes for product decisions, open questions, and why the app changed. Ke
 - Planning posture: Le Blanc pack items and live-search recommendations become normalized recommendation candidates. Each must-do becomes a mini-plan with suggested day/window, booking or confirmation next step, logistics note, packing implication, checklist link, booking link, and budget placeholder.
 - Honesty posture: generated copy should say "confirm transportation," "ask concierge," and "flexible block" instead of exact drive times, distances, prices, live hours, or availability. V1 is source/search aware, not maps-backed routing.
 - UX posture: `/trips/new` review and the manage command center now surface the saved brief, recommended places, must-do mini-plans, needs-booking/needs-confirmation tasks, and source/location limitation notes.
+
+## 2026-05-14 - Smart Assist Section Apply And Event Assist
+
+- Ask: roll forward on the natural next enhancements without overstating what was built, and keep extending location-aware planning wherever the existing data supports it.
+- Decision: keep the current V1 honest and incremental. Smart Assist previews now expose changed sections so users can apply only the itinerary, recommendations, bookings, checklist, packing, budget, event details, share messages, or planner notes they actually want.
+- Post-accept posture: generated trips now show compact next-action cards that jump to itinerary, bookings/event tasks, must-dos/moments, or share instead of leaving first-time users to guess what to review first.
+- Destination-pack posture: destination packs now have validation guardrails for IDs, matchers, source URLs, item names/categories, notes, and item URLs. This does not make packs editable in the app; adding packs is still a developer task.
+- Event posture: Smart Assist now has event-native actions for run-of-show and supplies/assignments, so cookouts and family gatherings do not have to route every improvement through trip-style booking language.
