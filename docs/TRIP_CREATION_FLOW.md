@@ -111,6 +111,7 @@ Location-aware V1 is search-first, not maps-backed routing. It uses the stay/loc
 - live-search source mode stays visible even if the composer is disabled or falls back
 - destination packs validate for duplicate IDs, required matchers/source URLs, and malformed URLs
 - Smart Assist previews expose changed sections so a user can apply only itinerary, recommendations, bookings, checklist, packing, budget, event details, share messages, or planner notes
+- Smart Assist can rebuild share-ready group text from the saved brief, recommendations, mini-plans, event tasks, and booking/confirmation items
 
 `npm run uat` proves the traveler lifecycle against a real temporary Vercel deployment:
 

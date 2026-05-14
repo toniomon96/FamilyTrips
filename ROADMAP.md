@@ -15,7 +15,7 @@ Family Trips is a casual shared planning hub for trips and family events. The go
 ## Next
 
 - Add section-level regeneration after the first smart draft: regenerate itinerary, dining ideas, things to do, checklist, or packing with a preview before replacing existing content. Current Smart Assist previews can already apply selected changed sections, but regeneration still uses deterministic actions rather than a full research pass per section.
-- Add deeper post-accept guidance for first-time users, including better copy blocks and clearer "send this to the group" summaries.
+- Add deeper post-accept guidance for first-time users. Current Smart Assist can rebuild group-chat summaries from the saved plan; next pass should improve the on-page share UX and make copy buttons more obvious inside the command center.
 - Expand destination packs beyond the Le Blanc Los Cabos pilot as real family/friend trips come up.
 - Keep event planning in the same vibe as trips: one shared link, simple pages, no accounts, no admin screens, and copy buttons for group chat. Event Smart Assist now has run-of-show and supplies/assignment actions, but event subtypes still need richer templates over time.
 - Add event-friendly content where it naturally helps:

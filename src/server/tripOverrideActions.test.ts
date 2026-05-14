@@ -248,9 +248,20 @@ describe('trip override API action handler', () => {
       state.store,
       { adminPin: 'admin', editorPin: 'editor' },
     )
+    const shareSummary = await runTripOverrideAction(
+      {
+        action: 'assistPreview',
+        tripSlug: 'logan-morgan-honeymoon',
+        pin: 'editor',
+        assistAction: 'share-summary',
+      },
+      state.store,
+      { adminPin: 'admin', editorPin: 'editor' },
+    )
 
     expect(restaurants.status).toBe(200)
     expect(miniPlans.status).toBe(200)
+    expect(shareSummary.status).toBe(200)
     expect(state.current?.version).toBe(1)
     if (restaurants.body.ok && 'assist' in restaurants.body) {
       expect(restaurants.body.assist.mergedTrip.thingsToDo.some((item) => item.name === 'Lumiere')).toBe(true)
@@ -262,6 +273,13 @@ describe('trip override API action handler', () => {
       expect(miniPlans.body.assist.sections.map((section) => section.id)).toEqual(
         expect.arrayContaining(['bookings', 'checklist', 'packing']),
       )
+    }
+    if (shareSummary.body.ok && 'assist' in shareSummary.body) {
+      const copyText = shareSummary.body.assist.mergedTrip.copyBlocks?.map((block) => block.body).join('\n') ?? ''
+      expect(copyText).toContain('Lumiere')
+      expect(copyText).toContain('Play a round of golf')
+      expect(copyText).toContain('not live availability or routing')
+      expect(shareSummary.body.assist.sections.some((section) => section.id === 'share')).toBe(true)
     }
   })
 
@@ -305,9 +323,20 @@ describe('trip override API action handler', () => {
       state.store,
       { adminPin: 'admin', editorPin: 'editor' },
     )
+    const shareSummary = await runTripOverrideAction(
+      {
+        action: 'assistPreview',
+        tripSlug: 'codex-family-cookout',
+        pin: 'editor',
+        assistAction: 'share-summary',
+      },
+      state.store,
+      { adminPin: 'admin', editorPin: 'editor' },
+    )
 
     expect(runOfShow.status).toBe(200)
     expect(supplies.status).toBe(200)
+    expect(shareSummary.status).toBe(200)
     if (runOfShow.body.ok && 'assist' in runOfShow.body) {
       expect(runOfShow.body.assist.mergedTrip.itinerary[0]?.items.some((item) => item.title === 'Host setup window')).toBe(true)
       expect(runOfShow.body.assist.sections.map((section) => section.id)).toEqual(expect.arrayContaining(['itinerary', 'event']))
@@ -315,6 +344,12 @@ describe('trip override API action handler', () => {
     if (supplies.body.ok && 'assist' in supplies.body) {
       expect(supplies.body.assist.mergedTrip.supplies?.some((item) => item.title === 'Serving table basics')).toBe(true)
       expect(supplies.body.assist.sections.some((section) => section.id === 'event')).toBe(true)
+    }
+    if (shareSummary.body.ok && 'assist' in shareSummary.body) {
+      const copyText = shareSummary.body.assist.mergedTrip.copyBlocks?.map((block) => block.body).join('\n') ?? ''
+      expect(copyText).toContain('Codex Family Cookout')
+      expect(copyText).toContain('Where:')
+      expect(shareSummary.body.assist.sections.some((section) => section.id === 'share')).toBe(true)
     }
   })
 

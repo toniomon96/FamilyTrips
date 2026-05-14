@@ -14,6 +14,7 @@ export type SmartAssistAction =
   | 'logistics-notes'
   | 'event-run-of-show'
   | 'event-supplies'
+  | 'share-summary'
 
 export type SmartAssistSectionId =
   | 'overview'
@@ -210,6 +211,133 @@ function addEventItineraryItem(trip: Trip, time: string, title: string, notes: s
   return true
 }
 
+function statusNeedsAction(status: unknown): boolean {
+  return status === 'needs-booking' || status === 'needs-confirmation'
+}
+
+function formatTripDates(trip: Trip): string {
+  return trip.startDate === trip.endDate ? trip.startDate : `${trip.startDate} to ${trip.endDate}`
+}
+
+function joinList(items: string[], fallback: string, limit = 5): string {
+  const clean = items.map((item) => item.trim()).filter(Boolean)
+  if (clean.length === 0) return fallback
+  return clean.slice(0, limit).map((item) => `- ${item}`).join('\n')
+}
+
+function upsertCopyBlock(trip: Trip, idBase: string, title: string, body: string): boolean {
+  const copyBlocks = trip.copyBlocks ?? []
+  const existing = copyBlocks.find((block) => block.title.toLowerCase() === title.toLowerCase() || block.id === idBase)
+  if (existing) {
+    if (existing.body === body && existing.status === 'suggested') return false
+    existing.body = body
+    existing.status = 'suggested'
+    return true
+  }
+  copyBlocks.push({
+    id: makeStableIdFromLabel('msg', idBase, ids(copyBlocks)),
+    title,
+    body,
+    status: 'suggested',
+  })
+  trip.copyBlocks = copyBlocks
+  return true
+}
+
+function buildShareSummaryBlocks(trip: Trip): { title: string; body: string }[] {
+  const isEvent = trip.kind === 'event'
+  const recommendations = trip.planner?.recommendations ?? []
+  const miniPlans = trip.planner?.miniPlans ?? []
+  const locationAnchor = trip.planner?.brief?.stayName
+    || trip.planner?.brief?.venueName
+    || trip.stay.name
+    || trip.location
+  const actionItems = [
+    ...trip.bookings.map((item) => ({
+      title: item.title,
+      detail: item.nextStep || item.details,
+      status: item.status,
+    })),
+    ...(isEvent ? trip.eventTasks ?? [] : trip.checklist).map((item) => ({
+      title: item.title,
+      detail: item.nextStep || item.notes,
+      status: item.status,
+    })),
+  ].filter((item) => statusNeedsAction(item.status))
+  const topRestaurants = recommendations
+    .filter((item) => item.category === 'restaurant')
+    .slice(0, 4)
+    .map((item) => `${item.name}${item.nextStep ? ` - ${item.nextStep}` : ''}`)
+  const topActivities = recommendations
+    .filter((item) => item.category === 'activity' || item.category === 'entertainment')
+    .slice(0, 4)
+    .map((item) => `${item.name}${item.nextStep ? ` - ${item.nextStep}` : ''}`)
+  const mustDos = miniPlans.slice(0, 5).map((item) => {
+    const timing = [item.recommendedDate, item.recommendedTimeWindow].filter(Boolean).join(' ')
+    return `${item.title}${timing ? ` (${timing})` : ''}${item.nextStep ? ` - ${item.nextStep}` : ''}`
+  })
+
+  if (isEvent) {
+    return [
+      {
+        title: 'Group text summary',
+        body: [
+          `${trip.name}`,
+          `When: ${formatTripDates(trip)}`,
+          `Where: ${locationAnchor}`,
+          '',
+          'Plan:',
+          joinList(trip.itinerary.flatMap((day) => day.items.slice(0, 4).map((item) => `${item.time ? `${item.time}: ` : ''}${item.title}`)), 'Run-of-show still needs review.'),
+          '',
+          'Needs confirmation:',
+          joinList(actionItems.map((item) => `${item.title}${item.detail ? ` - ${item.detail}` : ''}`), 'No urgent event tasks are flagged right now.'),
+        ].join('\n'),
+      },
+      {
+        title: 'What to bring / assign',
+        body: joinList(
+          [
+            ...(trip.food ?? []).slice(0, 4).map((item) => `${item.title}${item.assignedTo ? ` - ${item.assignedTo}` : ''}`),
+            ...(trip.supplies ?? []).slice(0, 6).map((item) => `${item.title}${item.assignedTo ? ` - ${item.assignedTo}` : ''}`),
+          ],
+          'No food or supply assignments are listed yet.',
+          10,
+        ),
+      },
+    ]
+  }
+
+  return [
+    {
+      title: 'Group text summary',
+      body: [
+        `${trip.name}`,
+        `Dates: ${formatTripDates(trip)}`,
+        `Home base: ${locationAnchor}`,
+        '',
+        'Must-dos:',
+        joinList(mustDos, 'No must-dos are structured yet.'),
+        '',
+        'Food / places to review:',
+        joinList(topRestaurants, 'No restaurant shortlist is stored yet.'),
+        '',
+        'Activities / entertainment:',
+        joinList(topActivities, 'No activity shortlist is stored yet.'),
+      ].join('\n'),
+    },
+    {
+      title: 'Booking follow-up text',
+      body: [
+        `Before relying on the ${trip.name} plan, these need booking or confirmation:`,
+        '',
+        joinList(actionItems.map((item) => `${item.title}${item.detail ? ` - ${item.detail}` : ''}`), 'No urgent booking or confirmation items are flagged right now.', 8),
+        '',
+        'Reminder: this planner is source/search aware, not live availability or routing. Confirm transportation, hours, prices, and reservations before locking anything in.',
+      ].join('\n'),
+    },
+  ]
+}
+
 function addThingToDo(trip: Trip, title: string, category: string, notes?: string, sourceIds?: string[], nextStep?: string): boolean {
   if (trip.thingsToDo.some((item) => item.name.toLowerCase() === title.toLowerCase())) return false
   trip.thingsToDo.push({
@@ -335,6 +463,14 @@ export function generateSmartAssistPreview(trip: Trip, action: SmartAssistAction
       if (addEventTask(next, 'Confirm who brings food and drinks', 'Food', 'Turn food and drink assumptions into assigned owners before the event.')) summary.push('Added food assignment task.')
       if (addEventTask(next, 'Send final event reminder', 'Share', 'Send time, address/parking note, what to bring, and any kid/activity notes.')) summary.push('Added final reminder task.')
     }
+  }
+
+  if (action === 'share-summary') {
+    const blocks = buildShareSummaryBlocks(next)
+    for (const block of blocks) {
+      if (upsertCopyBlock(next, block.title, block.title, block.body)) summary.push(`Updated ${block.title}.`)
+    }
+    if (blocks.length === 0) warnings.push('Smart Assist could not build a share summary from the current plan.')
   }
 
   if (action === 'fill-missing' || action === 'booking-reminders') {

@@ -121,3 +121,11 @@ Durable notes for product decisions, open questions, and why the app changed. Ke
 - Post-accept posture: generated trips now show compact next-action cards that jump to itinerary, bookings/event tasks, must-dos/moments, or share instead of leaving first-time users to guess what to review first.
 - Destination-pack posture: destination packs now have validation guardrails for IDs, matchers, source URLs, item names/categories, notes, and item URLs. This does not make packs editable in the app; adding packs is still a developer task.
 - Event posture: Smart Assist now has event-native actions for run-of-show and supplies/assignments, so cookouts and family gatherings do not have to route every improvement through trip-style booking language.
+
+## 2026-05-14 - Share Summary Assist
+
+- Ask: continue down the travel-agent command-center path and keep building on location-aware capabilities without overstating the result.
+- Decision: add a `share-summary` Smart Assist action that rebuilds copyable group-chat summaries from the currently saved plan.
+- Trip posture: the generated summary uses the saved home base/location anchor, must-do mini-plans, recommended restaurants/activities, and booking/confirmation items. It includes the honest reminder that V1 is not live routing or availability.
+- Event posture: the generated summary uses event date, venue/home base, run-of-show items, tasks, food, and supplies so event sharing does not read like a trip itinerary.
+- Limitation: this is deterministic from saved planner data; it does not rerun live research or create new recommendations.
