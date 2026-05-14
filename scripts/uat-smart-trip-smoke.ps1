@@ -387,6 +387,70 @@ function Run-SmartTripScenario {
   })
   Assert-Uat -Condition ($wrong.Status -eq 401) -Message "Wrong PIN generate should return 401, got $($wrong.Status)."
 
+  $wrongQuestions = Invoke-UatPost -Path '/api/trips' -Body ([ordered]@{
+    action = 'briefQuestions'
+    pin = 'definitely-wrong'
+    brief = New-UatBrief
+  })
+  Assert-Uat -Condition ($wrongQuestions.Status -eq 401) -Message "Wrong PIN briefQuestions should return 401, got $($wrongQuestions.Status)."
+
+  $wrongPreview = Invoke-UatPost -Path '/api/trips' -Body ([ordered]@{
+    action = 'preview'
+    pin = 'definitely-wrong'
+    brief = New-UatBrief
+  })
+  Assert-Uat -Condition ($wrongPreview.Status -eq 401) -Message "Wrong PIN preview should return 401, got $($wrongPreview.Status)."
+
+  $questionsResponse = Invoke-UatPost -Path '/api/trips' -Body ([ordered]@{
+    action = 'briefQuestions'
+    pin = $script:uatPin
+    brief = [ordered]@{
+      slug = "codex-uat-weak-$($script:stamp)"
+      name = 'Codex UAT Weak Draft'
+      destination = 'Charleston'
+      startDate = '2026-08-01'
+      endDate = '2026-08-03'
+      brief = 'Beach.'
+    }
+  })
+  Assert-Uat -Condition ($questionsResponse.Status -eq 200) -Message "briefQuestions should return 200, got $($questionsResponse.Status): $($questionsResponse.Content)"
+  $parsedQuestions = $questionsResponse.Content | ConvertFrom-Json
+  Assert-Uat -Condition ($parsedQuestions.quality.draftStrength -eq 'weak') -Message 'Weak brief did not return draftStrength=weak.'
+  Assert-Uat -Condition (@($parsedQuestions.quality.questions).Count -gt 0) -Message 'Weak brief did not return follow-up questions.'
+
+  $previewResponse = Invoke-UatPost -Path '/api/trips' -Body ([ordered]@{
+    action = 'preview'
+    pin = $script:uatPin
+    brief = New-UatBrief
+  })
+  Assert-Uat -Condition ($previewResponse.Status -eq 200) -Message "Preview should return 200, got $($previewResponse.Status): $($previewResponse.Content)"
+  $parsedPreview = $previewResponse.Content | ConvertFrom-Json
+  Assert-Uat -Condition ($parsedPreview.trip.slug -eq $script:slug) -Message 'Preview slug mismatch.'
+  Assert-Uat -Condition (@($parsedPreview.generationSummary.sourceRefs).Count -gt 0) -Message 'Preview missing source refs.'
+
+  $eventPreview = Invoke-UatPost -Path '/api/trips' -Body ([ordered]@{
+    action = 'preview'
+    pin = $script:uatPin
+    brief = [ordered]@{
+      slug = "codex-uat-event-$($script:stamp)"
+      planType = 'event'
+      eventSubtype = 'birthday'
+      name = 'Codex UAT Birthday'
+      destination = 'Family backyard'
+      startDate = '2026-09-12'
+      endDate = '2026-09-12'
+      guestCount = '20 people'
+      foodPreferences = 'Pizza, cake, drinks, and kid snacks'
+      rawContext = 'Birthday party with family, cousins, food, setup, cleanup, and kid games.'
+      mustDos = @('Cake moment', 'Group photo')
+    }
+  })
+  Assert-Uat -Condition ($eventPreview.Status -eq 200) -Message "Event preview should return 200, got $($eventPreview.Status): $($eventPreview.Content)"
+  $parsedEventPreview = $eventPreview.Content | ConvertFrom-Json
+  Assert-Uat -Condition ($parsedEventPreview.trip.kind -eq 'event') -Message 'Event preview did not create event kind.'
+  Assert-Uat -Condition (@($parsedEventPreview.trip.eventTasks).Count -gt 0) -Message 'Event preview missing event tasks.'
+  Assert-Uat -Condition (@($parsedEventPreview.trip.supplies).Count -gt 0) -Message 'Event preview missing supplies.'
+
   $generatedResponse = Invoke-UatPost -Path '/api/trips' -Body ([ordered]@{
     action = 'generate'
     pin = $script:uatPin
@@ -446,6 +510,11 @@ function Run-SmartTripScenario {
     matchedPackId = $script:generated.generationSummary.matchedPackId
     routeStatus = $routeStatus
     wrongPinStatus = $wrong.Status
+    wrongQuestionsStatus = $wrongQuestions.Status
+    wrongPreviewStatus = $wrongPreview.Status
+    questions = @($parsedQuestions.quality.questions).Count
+    previewSourceRefs = @($parsedPreview.generationSummary.sourceRefs).Count
+    eventPreviewTasks = @($parsedEventPreview.trip.eventTasks).Count
     duplicateStatus = $duplicate.Status
     wrongCleanupStatus = $wrongCleanup.Status
   }
@@ -482,6 +551,36 @@ function Run-ManageEditScenario {
   })
   Assert-Uat -Condition ($wrongRestore.Status -eq 401) -Message "Wrong PIN restore should return 401, got $($wrongRestore.Status)."
 
+  $wrongAssist = Invoke-UatPost -Path '/api/trip-overrides' -Body ([ordered]@{
+    action = 'assistPreview'
+    tripSlug = $script:slug
+    pin = 'definitely-wrong'
+    assistAction = 'booking-reminders'
+  })
+  Assert-Uat -Condition ($wrongAssist.Status -eq 401) -Message "Wrong PIN assistPreview should return 401, got $($wrongAssist.Status)."
+
+  $assist = Invoke-UatPost -Path '/api/trip-overrides' -Body ([ordered]@{
+    action = 'assistPreview'
+    tripSlug = $script:slug
+    pin = $script:uatPin
+    assistAction = 'booking-reminders'
+    note = 'Codex UAT Smart Assist preview.'
+  })
+  Assert-Uat -Condition ($assist.Status -eq 200) -Message "assistPreview should return 200, got $($assist.Status): $($assist.Content)"
+  $parsedAssist = $assist.Content | ConvertFrom-Json
+  Assert-Uat -Condition (@($parsedAssist.assist.summary).Count -gt 0) -Message 'assistPreview should include a change summary.'
+
+  $assistSave = Invoke-UatPost -Path '/api/trip-overrides' -Body ([ordered]@{
+    action = 'save'
+    tripSlug = $script:slug
+    pin = $script:uatPin
+    updatedBy = 'Codex UAT Smart Assist'
+    data = $parsedAssist.assist.data
+  })
+  Assert-Uat -Condition ($assistSave.Status -eq 200) -Message "Smart Assist apply save should return 200, got $($assistSave.Status): $($assistSave.Content)"
+  $parsedAssistSave = $assistSave.Content | ConvertFrom-Json
+  $script:currentTrip = $parsedAssistSave.mergedTrip
+
   $saved = Save-GeneratedTripData -Data $data
   Assert-Uat -Condition ($saved.row.version -ge 2) -Message "Expected saved version >= 2, got $($saved.row.version)."
   Assert-Uat -Condition ($saved.mergedTrip.tagline -eq "UAT verified $($script:stamp)") -Message 'Saved tagline did not persist in merged trip.'
@@ -512,6 +611,9 @@ function Run-ManageEditScenario {
     wrongSaveStatus = $wrongSave.Status
     wrongHistoryStatus = $wrongHistory.Status
     wrongRestoreStatus = $wrongRestore.Status
+    wrongAssistStatus = $wrongAssist.Status
+    assistSummaryCount = @($parsedAssist.assist.summary).Count
+    assistAppliedVersion = $parsedAssistSave.row.version
     savedVersion = $saved.row.version
     historyCount = @($parsedHistory.history).Count
     restoredVersion = $parsedRestore.row.version

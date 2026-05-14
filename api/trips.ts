@@ -4,7 +4,15 @@ import { createClient } from '@supabase/supabase-js'
 import { runTripCreateAction, type TripCreateStore } from '../src/server/tripActions.js'
 import type { Trip } from '../src/types/trip.js'
 import { TRIP_OVERRIDE_SELECT, type TripOverrideHistoryRow, type TripOverrideRow } from '../src/utils/tripOverrides.js'
-import type { NormalizedTripGenerationBrief, TripAiPlanner, TripGenerationContext } from '../src/utils/tripGeneration.js'
+import type {
+  NormalizedTripGenerationBrief,
+  ResearchBundle,
+  TripAiPlanner,
+  TripGenerationContext,
+  TripResearcher,
+  BriefQuality,
+} from '../src/utils/tripGeneration.js'
+import type { PlannerSourceKind } from '../src/types/trip.js'
 
 type JsonRequest = IncomingMessage & {
   body?: unknown
@@ -326,12 +334,139 @@ function stripNulls(value: unknown): unknown {
   return next
 }
 
+function safeHttpUrl(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value.trim()) return undefined
+  try {
+    const url = new URL(value.trim())
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : undefined
+  } catch {
+    return undefined
+  }
+}
+
 function parseAiTrip(value: unknown): Trip | null {
   const text = extractResponseText(value)
   if (!text) return null
   const parsed = JSON.parse(text) as unknown
   if (!isRecord(parsed) || !isRecord(parsed.trip)) return null
   return stripNulls(parsed.trip) as Trip
+}
+
+function researchResponseSchema(): Record<string, unknown> {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['sourceRefs', 'insights', 'notes'],
+    properties: {
+      sourceRefs: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['id', 'title', 'url', 'kind', 'note'],
+          properties: {
+            id: { type: 'string' },
+            title: { type: 'string' },
+            url: nullableString(),
+            kind: { enum: ['official', 'user-provided', 'search', 'curated', 'inferred'] },
+            note: nullableString(),
+          },
+        },
+      },
+      insights: stringArray(),
+      notes: stringArray(),
+    },
+  }
+}
+
+function parseResearchBundle(value: unknown): ResearchBundle | null {
+  const text = extractResponseText(value)
+  if (!text) return null
+  const parsed = JSON.parse(text) as unknown
+  if (!isRecord(parsed) || !Array.isArray(parsed.sourceRefs) || !Array.isArray(parsed.insights) || !Array.isArray(parsed.notes)) return null
+  return {
+    sourceRefs: parsed.sourceRefs
+      .filter(isRecord)
+      .map((item, index) => {
+        const kind: PlannerSourceKind =
+          item.kind === 'official' ||
+          item.kind === 'user-provided' ||
+          item.kind === 'curated' ||
+          item.kind === 'inferred'
+            ? item.kind
+            : 'search'
+        return {
+          id: typeof item.id === 'string' && item.id ? item.id : `src-search-${index + 1}`,
+          title: typeof item.title === 'string' && item.title ? item.title : 'Search source',
+          url: safeHttpUrl(item.url),
+          kind,
+          note: typeof item.note === 'string' ? item.note : undefined,
+        }
+      })
+      .slice(0, 12),
+    insights: parsed.insights.filter((item): item is string => typeof item === 'string').slice(0, 12),
+    notes: parsed.notes.filter((item): item is string => typeof item === 'string').slice(0, 12),
+    usedSearch: true,
+  }
+}
+
+function createOpenAiResearcher(apiKey: string | undefined, model: string | undefined): TripResearcher | undefined {
+  const researchEnabled = (process.env.TRIP_RESEARCH_ENABLED ?? '1').toLowerCase()
+  if (!apiKey || researchEnabled === '0' || researchEnabled === 'false') return undefined
+  return async (input: NormalizedTripGenerationBrief, quality: BriefQuality) => {
+    const maxQueries = Number(process.env.TRIP_RESEARCH_MAX_QUERIES || 4)
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: model || process.env.TRIP_GENERATION_MODEL || 'gpt-5.5',
+        tools: [{ type: 'web_search', search_context_size: 'low' }],
+        tool_choice: 'auto',
+        input: [
+          {
+            role: 'system',
+            content: [
+              {
+                type: 'input_text',
+                text:
+                  'Research a family travel or event planning brief. Prefer official venue, resort, restaurant, attraction, and event sources. ' +
+                  'Return only structured JSON. Do not invent availability, exact prices, confirmation numbers, or private contact details.',
+              },
+            ],
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'input_text',
+                text: JSON.stringify({
+                  brief: input,
+                  quality,
+                  maxQueries: Number.isFinite(maxQueries) ? Math.max(1, Math.min(8, maxQueries)) : 4,
+                  instructions:
+                    'Find source-backed planning facts and cite URLs/titles when possible. Focus on official sources and practical planning constraints.',
+                }),
+              },
+            ],
+          },
+        ],
+        text: {
+          format: {
+            type: 'json_schema',
+            name: 'familytrips_research_bundle',
+            strict: true,
+            schema: researchResponseSchema(),
+          },
+        },
+      }),
+    })
+
+    if (!response.ok) return null
+    return parseResearchBundle(await response.json())
+  }
 }
 
 function createOpenAiPlanner(apiKey: string | undefined, model: string | undefined): TripAiPlanner | undefined {
@@ -367,6 +502,7 @@ function createOpenAiPlanner(apiKey: string | undefined, model: string | undefin
                 text: JSON.stringify({
                   brief: input,
                   destinationPack: context.destinationPack,
+                  research: context.research,
                   fallbackTrip: context.fallbackTrip,
                   fallbackSummary: context.fallbackSummary,
                 }),
@@ -410,6 +546,7 @@ export default async function handler(req: JsonRequest, res: ServerResponse) {
       adminPin: process.env.ADMIN_PIN,
       editorPin: process.env.TRIP_EDITOR_PIN,
       aiPlanner: createOpenAiPlanner(process.env.OPENAI_API_KEY, process.env.TRIP_GENERATION_MODEL),
+      researcher: createOpenAiResearcher(process.env.OPENAI_API_KEY, process.env.TRIP_RESEARCH_MODEL),
       pinMatches,
     })
     json(res, result.status, result.body)

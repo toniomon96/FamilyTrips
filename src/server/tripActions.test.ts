@@ -81,6 +81,31 @@ describe('trip create API action handler', () => {
     expect(state.rows.size).toBe(0)
   })
 
+  it('rejects brief questions and preview with an incorrect shared edit PIN', async () => {
+    const state = createStore()
+    const brief = {
+      name: 'Bad PIN',
+      destination: 'Le Blanc Los Cabos',
+      startDate: '2026-07-19',
+      endDate: '2026-07-23',
+    }
+
+    const questions = await runTripCreateAction(
+      { action: 'briefQuestions', pin: 'wrong', brief },
+      state.store,
+      { editorPin: 'editor' },
+    )
+    const preview = await runTripCreateAction(
+      { action: 'preview', pin: 'wrong', brief },
+      state.store,
+      { editorPin: 'editor' },
+    )
+
+    expect(questions.status).toBe(401)
+    expect(preview.status).toBe(401)
+    expect(state.rows.size).toBe(0)
+  })
+
   it('creates a dynamic unlisted trip with the shared edit PIN', async () => {
     const state = createStore()
     const trip = createTripShell({
@@ -135,6 +160,97 @@ describe('trip create API action handler', () => {
     expect(result.body.generationSummary?.matchedPackId).toBe('le-blanc-los-cabos')
     expect(result.body.trip.itinerary).toHaveLength(5)
     expect(JSON.stringify(result.body.trip).toLowerCase()).toContain('lovers beach')
+  })
+
+  it('returns follow-up questions for a weak brief without writing', async () => {
+    const state = createStore()
+
+    const result = await runTripCreateAction(
+      {
+        action: 'briefQuestions',
+        pin: 'editor',
+        brief: {
+          name: 'Quick Trip',
+          destination: 'Charleston',
+          startDate: '2026-08-01',
+          endDate: '2026-08-03',
+          brief: 'Beach.',
+        },
+      },
+      state.store,
+      { editorPin: 'editor' },
+    )
+
+    expect(result.status).toBe(200)
+    expect(state.rows.size).toBe(0)
+    if (!result.body.ok || !('quality' in result.body)) return
+    expect(result.body.quality.draftStrength).toBe('weak')
+    expect(result.body.quality.questions.length).toBeGreaterThan(0)
+  })
+
+  it('previews a generated trip without writing to Supabase state', async () => {
+    const state = createStore()
+
+    const result = await runTripCreateAction(
+      {
+        action: 'preview',
+        pin: 'editor',
+        brief: {
+          slug: 'preview-honeymoon',
+          name: 'Preview Honeymoon',
+          destination: 'Le Blanc Los Cabos',
+          startDate: '2026-07-19',
+          endDate: '2026-07-23',
+          mustDos: ['Golf', 'Lovers Beach'],
+        },
+      },
+      state.store,
+      { editorPin: 'editor' },
+    )
+
+    expect(result.status).toBe(200)
+    expect(state.rows.size).toBe(0)
+    expect(state.history).toHaveLength(0)
+    if (!result.body.ok || !('trip' in result.body)) return
+    expect(result.body.trip.slug).toBe('preview-honeymoon')
+    expect(result.body.generationSummary?.sourceRefs.length).toBeGreaterThan(0)
+  })
+
+  it('rejects preview duplicate slugs before writing', async () => {
+    const state = createStore()
+    const first = await runTripCreateAction(
+      {
+        action: 'generate',
+        pin: 'editor',
+        brief: {
+          slug: 'preview-duplicate',
+          name: 'Preview Duplicate',
+          destination: 'Le Blanc Los Cabos',
+          startDate: '2026-07-19',
+          endDate: '2026-07-23',
+        },
+      },
+      state.store,
+      { editorPin: 'editor' },
+    )
+    const duplicatePreview = await runTripCreateAction(
+      {
+        action: 'preview',
+        pin: 'editor',
+        brief: {
+          slug: 'preview-duplicate',
+          name: 'Preview Duplicate',
+          destination: 'Le Blanc Los Cabos',
+          startDate: '2026-07-19',
+          endDate: '2026-07-23',
+        },
+      },
+      state.store,
+      { editorPin: 'editor' },
+    )
+
+    expect(first.status).toBe(200)
+    expect(duplicatePreview.status).toBe(409)
   })
 
   it('falls back to deterministic generation when AI output is invalid', async () => {

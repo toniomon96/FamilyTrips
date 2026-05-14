@@ -5,6 +5,7 @@ import {
   buildDeterministicTrip,
   generateSmartTrip,
   normalizeTripGenerationBrief,
+  scorePlanBrief,
 } from './tripGeneration'
 import { validateTripForSave } from './tripShell'
 
@@ -63,6 +64,23 @@ describe('smart trip generation', () => {
     expect(normalized.validationErrors.map((error) => error.path)).toContain('dates')
   })
 
+  it('scores weak briefs and returns useful follow-up questions', () => {
+    const normalized = normalizeTripGenerationBrief({
+      name: 'Quick Beach Trip',
+      destination: 'Charleston',
+      startDate: '2026-08-01',
+      endDate: '2026-08-03',
+      brief: 'Beach.',
+    })
+
+    expect(normalized.ok).toBe(true)
+    if (!normalized.ok) return
+    const quality = scorePlanBrief(normalized.brief)
+    expect(quality.draftStrength).toBe('weak')
+    expect(quality.questions.map((item) => item.id)).toContain('context')
+    expect(quality.missingInputs).toContain('travelers')
+  })
+
   it('matches the Le Blanc pack for common name variants', () => {
     expect(findDestinationPack('Le Blanc Los Cabos')?.id).toBe('le-blanc-los-cabos')
     expect(findDestinationPack('los cabo honeymoon')?.id).toBe('le-blanc-los-cabos')
@@ -86,6 +104,67 @@ describe('smart trip generation', () => {
     expect(trip.bookings.some((booking) => booking.title.toLowerCase().includes('golf'))).toBe(true)
     expect(trip.checklist.some((item) => item.title.toLowerCase().includes('lovers beach'))).toBe(true)
     expect(trip.copyBlocks?.some((block) => block.title === 'Trip link message')).toBe(true)
+    expect(trip.planner?.sourceRefs.some((source) => source.kind === 'official')).toBe(true)
+    expect(trip.itinerary.some((day) => day.items.some((item) => item.status === 'needs-confirmation' && item.why))).toBe(true)
+  })
+
+  it('builds event-native drafts with run-of-show, supplies, food, and tasks', () => {
+    const normalized = normalizeTripGenerationBrief({
+      planType: 'event',
+      eventSubtype: 'birthday',
+      name: 'Family Birthday',
+      destination: 'Backyard',
+      startDate: '2026-09-12',
+      endDate: '2026-09-12',
+      guestCount: '20 people',
+      foodPreferences: 'Pizza, cake, drinks, kid snacks',
+      mustDos: ['Cake moment', 'Group photo'],
+      rawContext: 'Birthday party with cousins and family. Need food, setup, cleanup, and games for kids.',
+    })
+
+    expect(normalized.ok).toBe(true)
+    if (!normalized.ok) return
+    expect(normalized.brief.planType).toBe('event')
+    const generated = buildDeterministicTrip(normalized.brief)
+    expect(validateTripForSave(generated.trip)).toHaveLength(0)
+    expect(generated.trip.kind).toBe('event')
+    expect(generated.trip.itinerary[0].title?.toLowerCase()).toContain('birthday')
+    expect(generated.trip.eventTasks?.some((item) => item.title.toLowerCase().includes('setup'))).toBe(true)
+    expect(generated.trip.supplies?.length).toBeGreaterThan(0)
+    expect(generated.trip.food?.length).toBeGreaterThan(0)
+  })
+
+  it('preserves event identity when an AI draft omits optional event fields', async () => {
+    const normalized = normalizeTripGenerationBrief({
+      planType: 'event',
+      eventSubtype: 'game-night',
+      name: 'Family Game Night',
+      destination: 'Toni house',
+      startDate: '2026-09-12',
+      endDate: '2026-09-12',
+      rawContext: 'Family game night with cousins, pizza, setup, cleanup, and a loose run of show.',
+      mustDos: ['Pizza', 'Tournament bracket'],
+    })
+
+    expect(normalized.ok).toBe(true)
+    if (!normalized.ok) return
+    const generated = await generateSmartTrip(normalized.brief, {
+      aiPlanner: async (_input, context) => {
+        const { kind: _kind, eventTasks: _eventTasks, supplies: _supplies, food: _food, ...candidate } = context.fallbackTrip
+        void _kind
+        void _eventTasks
+        void _supplies
+        void _food
+        return candidate
+      },
+    })
+
+    expect(generated.generationSummary.source).toBe('ai')
+    expect(generated.trip.kind).toBe('event')
+    expect(generated.trip.eventTasks?.length).toBeGreaterThan(0)
+    expect(generated.trip.supplies?.length).toBeGreaterThan(0)
+    expect(generated.trip.food?.length).toBeGreaterThan(0)
+    expect(validateTripForSave(generated.trip)).toHaveLength(0)
   })
 
   it('falls back safely when an AI planner returns malformed trip data', async () => {
@@ -100,9 +179,33 @@ describe('smart trip generation', () => {
     })
 
     expect(generated.generationSummary.source).toBe('ai-fallback')
+    expect(generated.trip.planner?.sourceMode).toBe('ai-fallback')
     expect(generated.trip.name).toBe('Logan + Morgan Honeymoon')
     expect(generated.trip.itinerary).toHaveLength(5)
     expect(validateTripForSave(generated.trip)).toHaveLength(0)
+  })
+
+  it('uses researcher source refs when available and still validates generated fallback', async () => {
+    const brief = leBlancBrief()
+    const generated = await generateSmartTrip(brief, {
+      researcher: async () => ({
+        usedSearch: true,
+        sourceRefs: [
+          {
+            id: 'src-official-golf',
+            title: 'Official golf page',
+            url: 'https://los-cabos.leblancsparesorts.com/experiences/cabo-real-golf-course',
+            kind: 'official',
+          },
+        ],
+        insights: ['Golf logistics should be confirmed with the resort.'],
+        notes: ['Mocked research bundle.'],
+      }),
+    })
+
+    expect(validateTripForSave(generated.trip)).toHaveLength(0)
+    expect(generated.trip.planner?.sourceMode).toBe('search')
+    expect(generated.generationSummary.sourceRefs.some((source) => source.id === 'src-official-golf')).toBe(true)
   })
 
   it('accepts valid AI drafts but preserves user facts and strips unsafe invented details', async () => {

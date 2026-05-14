@@ -11,6 +11,11 @@ import {
   mapsLink,
 } from '../utils/formatters'
 
+function StatusPill({ value }: { value?: string }) {
+  if (!value) return null
+  return <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{value}</span>
+}
+
 export default function Trip() {
   const trip = useTrip()
   const isEvent = trip.kind === 'event'
@@ -35,6 +40,9 @@ export default function Trip() {
           <a href="#messages" className="px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-800 text-sm font-medium">📋 Messages</a>
         ) : null}
         <a href="#things" className="px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-800 text-sm font-medium">📍 {thingsLabel}</a>
+        {trip.planner?.sourceRefs.length ? (
+          <a href="#sources" className="px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-800 text-sm font-medium">🔎 Sources</a>
+        ) : null}
       </nav>
 
       <Section
@@ -52,6 +60,11 @@ export default function Trip() {
           />
         )}
         <div className="space-y-4">
+          {trip.planner?.warnings.length ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              {trip.planner.warnings[0]}
+            </div>
+          ) : null}
           {trip.itinerary.map((day) => (
             <article key={day.date} className="rounded-2xl border border-slate-200 overflow-hidden">
               <header className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-100">
@@ -67,6 +80,7 @@ export default function Trip() {
                     {item.time && <span className="text-slate-500 font-mono text-sm w-20 shrink-0">{item.time}</span>}
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-slate-900">{item.title}</p>
+                      <StatusPill value={item.status} />
                       {item.address && (
                         <a
                           href={mapsLink(item.address)}
@@ -78,6 +92,8 @@ export default function Trip() {
                         </a>
                       )}
                       {item.notes && <p className="text-sm text-slate-600 mt-1">{item.notes}</p>}
+                      {item.why && <p className="text-xs text-slate-500 mt-1">Why: {item.why}</p>}
+                      {item.nextStep && <p className="text-xs text-slate-500 mt-1">Next: {item.nextStep}</p>}
                       {item.link && (
                         <a
                           href={item.link}
@@ -165,8 +181,11 @@ export default function Trip() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-semibold text-slate-900">{a.name}</p>
+                  <StatusPill value={a.status} />
                   {a.category && <p className="text-xs text-slate-500">{a.category}</p>}
                   {a.notes && <p className="text-sm text-slate-700 mt-1">{a.notes}</p>}
+                  {a.why && <p className="text-xs text-slate-500 mt-1">Why: {a.why}</p>}
+                  {a.nextStep && <p className="text-xs text-slate-500 mt-1">Next: {a.nextStep}</p>}
                   {a.address && (
                     <a
                       href={mapsLink(a.address)}
@@ -199,6 +218,31 @@ export default function Trip() {
           ))}
         </ul>
       </Section>
+
+      {trip.planner?.sourceRefs.length ? (
+        <Section id="sources" title="Sources & Confidence" icon="🔎">
+          <div className="space-y-3">
+            <p className="text-sm text-slate-700">
+              Draft strength: <span className="font-semibold">{trip.planner.draftStrength}</span>. Confirm anything marked as booking-sensitive before relying on it.
+            </p>
+            <ul className="space-y-2">
+              {trip.planner.sourceRefs.map((source) => (
+                <li key={source.id} className="rounded-2xl border border-slate-200 p-3 text-sm">
+                  {source.url ? (
+                    <a href={source.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-700 underline underline-offset-2">
+                      {source.title}
+                    </a>
+                  ) : (
+                    <span className="font-semibold text-slate-900">{source.title}</span>
+                  )}
+                  <span className="ml-2 text-xs text-slate-500">{source.kind}</span>
+                  {source.note && <p className="mt-1 text-slate-600">{source.note}</p>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Section>
+      ) : null}
     </div>
   )
 }

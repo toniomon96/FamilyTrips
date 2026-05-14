@@ -52,6 +52,7 @@ const EDITABLE_KEYS = [
   'eventTasks',
   'copyBlocks',
   'budget',
+  'planner',
   'map',
 ] as const satisfies readonly (keyof TripEditableFields)[]
 

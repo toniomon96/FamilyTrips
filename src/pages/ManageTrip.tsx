@@ -28,6 +28,7 @@ import {
   type TripOverrideHistoryRow,
   type TripOverrideRow,
 } from '../utils/tripOverrides'
+import type { SmartAssistAction, SmartAssistPreview } from '../utils/tripAssist'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 type FieldKind = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'checkbox'
@@ -52,6 +53,7 @@ type OwnerApiSuccess = {
   row?: TripOverrideRow
   history?: TripOverrideHistoryRow[]
   mergedTrip?: Trip
+  assist?: SmartAssistPreview
 }
 
 type OwnerApiFailure = {
@@ -590,6 +592,9 @@ export default function ManageTrip() {
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [message, setMessage] = useState<string | null>(null)
   const [serverErrors, setServerErrors] = useState<ValidationMessage[]>([])
+  const [assistAction, setAssistAction] = useState<SmartAssistAction>('fill-missing')
+  const [assistNote, setAssistNote] = useState('')
+  const [assistPreview, setAssistPreview] = useState<SmartAssistPreview | null>(null)
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -711,6 +716,52 @@ export default function ManageTrip() {
     }
   }
 
+  async function handleSmartAssistPreview() {
+    setSaveState('saving')
+    setMessage(null)
+    setServerErrors([])
+    const result = await ownerRequest({
+      action: 'assistPreview',
+      tripSlug: draft.slug,
+      pin,
+      assistAction,
+      note: assistNote,
+    })
+    if (!result.ok) {
+      setSaveState('error')
+      setMessage(result.error)
+      setServerErrors(result.validationErrors ?? [])
+      return
+    }
+    setAssistPreview(result.assist ?? null)
+    setSaveState('idle')
+    setMessage(result.assist?.summary.length ? 'Smart Assist preview ready.' : 'Smart Assist did not find a safe automatic change.')
+  }
+
+  async function handleApplySmartAssist() {
+    if (!assistPreview) return
+    setSaveState('saving')
+    setMessage(null)
+    setServerErrors([])
+    const result = await ownerRequest({
+      action: 'save',
+      tripSlug: draft.slug,
+      pin,
+      data: assistPreview.data,
+      updatedBy: 'Smart Assist',
+    })
+    if (!result.ok) {
+      setSaveState('error')
+      setMessage(result.error)
+      setServerErrors(result.validationErrors ?? [])
+      return
+    }
+    replaceFromApi(result)
+    setAssistPreview(null)
+    setSaveState('saved')
+    setMessage(`Smart Assist applied as version ${result.row?.version ?? ''}.`.trim())
+  }
+
   return (
     <form onSubmit={handleSave} className="space-y-6">
       <header className="space-y-3">
@@ -811,6 +862,73 @@ export default function ManageTrip() {
           </div>
         </section>
       )}
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Smart Assist</p>
+            <h2 className="mt-1 text-2xl font-bold text-slate-950">Improve this plan without starting over.</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Preview suggested edits, then apply them through the same save/history flow.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+            disabled={!pin.trim() || saveState === 'saving'}
+            onClick={handleSmartAssistPreview}
+          >
+            {saveState === 'saving' ? 'Checking...' : 'Preview assist'}
+          </button>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <SelectInput
+            label="Assist action"
+            value={assistAction}
+            onChange={(value) => setAssistAction(value as SmartAssistAction)}
+            options={[
+              { value: 'fill-missing', label: 'Fill missing sections' },
+              { value: 'improve-itinerary', label: 'Improve itinerary' },
+              { value: 'booking-reminders', label: 'Create booking reminders' },
+              { value: 'packing-checklist', label: 'Build checklist / packing' },
+              { value: 'looser-day', label: 'Make the plan looser' },
+              { value: 'tighter-day', label: 'Tighten open days' },
+            ]}
+          />
+          <TextArea
+            label="Optional instruction"
+            value={assistNote}
+            rows={3}
+            placeholder="Example: make this more kid-friendly, add reminders for dinner reservations, keep mornings open..."
+            onChange={setAssistNote}
+          />
+        </div>
+        {assistPreview && (
+          <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 space-y-3">
+            <div>
+              <p className="font-semibold text-slate-950">Preview summary</p>
+              {assistPreview.summary.length ? (
+                <ul className="mt-2 list-disc pl-5 text-sm text-slate-700 space-y-1">
+                  {assistPreview.summary.map((item) => <li key={item}>{item}</li>)}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm text-slate-700">No safe automatic changes were found.</p>
+              )}
+              {assistPreview.warnings.map((warning) => (
+                <p key={warning} className="mt-2 text-sm text-amber-800">{warning}</p>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={handleApplySmartAssist}>
+                Apply and save live
+              </button>
+              <button type="button" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700" onClick={() => setAssistPreview(null)}>
+                Dismiss preview
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
 
       {validationSummary(allErrors)}
 

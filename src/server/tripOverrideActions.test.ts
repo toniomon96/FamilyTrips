@@ -135,6 +135,79 @@ describe('trip override API action handler', () => {
     expect(state.current?.created_at).toBe(dynamicCurrent.created_at)
   })
 
+  it('previews Smart Assist for dynamic trips without writing', async () => {
+    const dynamicCurrent: TripOverrideRow = {
+      trip_slug: 'logan-morgan-honeymoon',
+      data: {
+        ...editableFieldsFromTrip(okc),
+        name: 'Logan + Morgan Honeymoon',
+        location: 'Los Cabos, Mexico',
+        visibility: 'unlisted',
+        thingsToDo: [{ id: 'td-golf', name: 'Golf', category: 'Activity' }],
+      },
+      version: 1,
+      updated_at: '2026-01-01T00:00:00.000Z',
+      updated_by: 'creator',
+      source: 'dynamic',
+      visibility: 'unlisted',
+      created_at: '2026-01-01T00:00:00.000Z',
+      created_by: 'Logan',
+    }
+    const state = createStore([], dynamicCurrent)
+    const result = await runTripOverrideAction(
+      {
+        action: 'assistPreview',
+        tripSlug: 'logan-morgan-honeymoon',
+        pin: 'editor',
+        assistAction: 'booking-reminders',
+      },
+      state.store,
+      { adminPin: 'admin', editorPin: 'editor' },
+    )
+
+    expect(result.status).toBe(200)
+    expect(state.current?.version).toBe(1)
+    expect(state.history).toHaveLength(0)
+    if (!result.body.ok || !('assist' in result.body)) return
+    expect(result.body.assist.summary.some((item) => item.includes('Golf'))).toBe(true)
+    expect(result.body.assist.mergedTrip.bookings.some((booking) => booking.title === 'Golf')).toBe(true)
+  })
+
+  it('does not let the shared editor PIN preview Smart Assist for static seed trips', async () => {
+    const state = createStore()
+    const result = await runTripOverrideAction(
+      {
+        action: 'assistPreview',
+        tripSlug: 'okc',
+        pin: 'editor',
+        assistAction: 'fill-missing',
+      },
+      state.store,
+      { adminPin: 'admin', editorPin: 'editor' },
+    )
+
+    expect(result.status).toBe(401)
+  })
+
+  it('lets the admin PIN preview Smart Assist for static seed trips', async () => {
+    const state = createStore()
+    const result = await runTripOverrideAction(
+      {
+        action: 'assistPreview',
+        tripSlug: 'okc',
+        pin: 'admin',
+        assistAction: 'packing-checklist',
+      },
+      state.store,
+      { adminPin: 'admin', editorPin: 'editor' },
+    )
+
+    expect(result.status).toBe(200)
+    expect(state.current).toBeNull()
+    if (!result.body.ok || !('assist' in result.body)) return
+    expect(result.body.assist.data).toBeTruthy()
+  })
+
   it('rejects invalid saved payloads before writing', async () => {
     const state = createStore()
     const result = await runTripOverrideAction(

@@ -1,8 +1,32 @@
 export type BookingKind = 'flight' | 'stay' | 'car' | 'activity' | 'other'
 
 export type PlanKind = 'trip' | 'event'
+export type PlanItemStatus = 'confirmed' | 'suggested' | 'needs-booking' | 'needs-confirmation'
+export type DraftStrength = 'weak' | 'medium' | 'strong'
+export type PlannerSourceKind = 'official' | 'user-provided' | 'search' | 'curated' | 'inferred'
 
-export type Booking = {
+export type PlannerSourceRef = {
+  id: string
+  title: string
+  url?: string
+  kind: PlannerSourceKind
+  note?: string
+}
+
+export type PlannerAnnotated = {
+  status?: PlanItemStatus
+  why?: string
+  nextStep?: string
+  sourceIds?: string[]
+}
+
+export type PlannerExplained = {
+  why?: string
+  nextStep?: string
+  sourceIds?: string[]
+}
+
+export type Booking = PlannerAnnotated & {
   id: string
   kind: BookingKind
   title: string
@@ -27,7 +51,7 @@ export type Stay = {
   hostPhone?: string
 }
 
-export type ItineraryItem = {
+export type ItineraryItem = PlannerAnnotated & {
   time?: string
   title: string
   notes?: string
@@ -41,7 +65,7 @@ export type Day = {
   items: ItineraryItem[]
 }
 
-export type Activity = {
+export type Activity = PlannerAnnotated & {
   id: string
   name: string
   category?: string
@@ -69,7 +93,7 @@ export type Contact = {
   notes?: string
 }
 
-export type ChecklistItem = {
+export type ChecklistItem = PlannerAnnotated & {
   id: string
   title: string
   category: string
@@ -77,7 +101,7 @@ export type ChecklistItem = {
   notes?: string
 }
 
-export type PackingItem = {
+export type PackingItem = PlannerAnnotated & {
   id: string
   title: string
   category: string
@@ -96,13 +120,13 @@ export type EventFoodItem = {
   notes?: string
 }
 
-export type CopyBlock = {
+export type CopyBlock = PlannerAnnotated & {
   id: string
   title: string
   body: string
 }
 
-export type BudgetItem = {
+export type BudgetItem = PlannerExplained & {
   id: string
   name: string
   total: number
@@ -135,6 +159,16 @@ export type Trip = {
   eventTasks?: ChecklistItem[]
   copyBlocks?: CopyBlock[]
   budget: BudgetItem[]
+  planner?: {
+    draftStrength: DraftStrength
+    warnings: string[]
+    missingInputs: string[]
+    generatedAt: string
+    sourceMode: 'deterministic' | 'curated' | 'search' | 'ai' | 'ai-fallback'
+    sourceRefs: PlannerSourceRef[]
+    questions?: string[]
+    notes?: string[]
+  }
   map?: {
     embedUrl?: string
     center?: { lat: number; lng: number }

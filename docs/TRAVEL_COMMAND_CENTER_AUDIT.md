@@ -331,7 +331,7 @@ Then it should offer:
 
 ### P0 - Neutral Public Hotfix
 
-Status: in progress.
+Status: shipped.
 
 - Remove Logan and Morgan as public default examples.
 - Use neutral placeholders on `/trips/new`.
@@ -339,6 +339,8 @@ Status: in progress.
 - Deploy after normal validation.
 
 ### P1 - Mobile Wizard And Rich Brief
+
+Status: shipped in the quality vertical.
 
 - Replace the long create form with wizard cards.
 - Add the large "Tell us everything" field as the primary input.
@@ -349,12 +351,16 @@ Status: in progress.
 
 ### P2 - Follow-Up Questions And Review Screen
 
+Status: shipped in the quality vertical.
+
 - Add a server-side brief quality scorer.
 - Generate 3 to 6 follow-up questions when context is thin.
 - Add a review screen before manage.
 - Support accept, regenerate, and edit brief.
 
 ### P3 - Source-Aware Research
+
+Status: shipped with optional server-side OpenAI web search plus deterministic fallback.
 
 - Add live search from server-side generation only.
 - Store source posture in generated notes/copy blocks.
@@ -363,12 +369,16 @@ Status: in progress.
 
 ### P4 - Better Planning Engine
 
+Status: shipped as the first planning-engine pass. Real maps/distance APIs remain deferred.
+
 - Convert must-dos into structured anchors and mini-plans.
 - Add location/distance awareness.
 - Add schedule balancing by pace, arrival/departure, and activity intensity.
 - Generate better checklist, packing, budget, and booking placeholders from the actual plan.
 
 ### P5 - Smart Assist For Existing Plans
+
+Status: shipped as basic preview/apply Smart Assist.
 
 - Add manage-page Smart Assist actions.
 - Generate preview diffs before applying.
@@ -377,11 +387,15 @@ Status: in progress.
 
 ### P6 - First-Class Events
 
+Status: shipped as first-pass event intake and event-native draft generation.
+
 - Add event plan types and event-specific fields.
 - Generate run-of-show, supplies, food/drink, setup, cleanup, assignments, guest notes, and budgets.
 - Add event examples and UAT scenarios.
 
 ### P7 - Import And Voice
+
+Status: partially shipped with browser dictation. Rich import, screenshots, and audio upload remain later work.
 
 - Add browser dictation to the raw context field.
 - Add paste/import from text messages, emails, invites, and links.
@@ -399,4 +413,3 @@ Status: in progress.
 - Existing trips can use Smart Assist without migrating static seed data.
 - Events generate event-native planning sections, not trip-flavored filler.
 - UAT covers trip creation, event creation, weak brief, rich brief, mobile layout, source notes, Smart Assist preview, and cleanup.
-

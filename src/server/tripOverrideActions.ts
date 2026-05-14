@@ -7,6 +7,7 @@ import {
   tripVisibilityFromData,
   validateEditableTrip,
 } from '../utils/tripOverrides.js'
+import { generateSmartAssistPreview, type SmartAssistAction } from '../utils/tripAssist.js'
 
 type SaveBody = {
   action: 'save'
@@ -30,7 +31,15 @@ type HistoryBody = {
   pin: string
 }
 
-export type TripOverrideRequestBody = SaveBody | RestoreBody | HistoryBody
+type AssistPreviewBody = {
+  action: 'assistPreview'
+  tripSlug: string
+  pin: string
+  assistAction: SmartAssistAction
+  note?: unknown
+}
+
+export type TripOverrideRequestBody = SaveBody | RestoreBody | HistoryBody | AssistPreviewBody
 
 export type TripOverrideStore = {
   getCurrent: (tripSlug: string) => Promise<TripOverrideRow | null>
@@ -42,6 +51,7 @@ export type TripOverrideStore = {
 
 export type TripOverrideActionResult =
   | { status: number; body: { ok: true; row?: TripOverrideRow; history?: TripOverrideHistoryRow[]; mergedTrip?: unknown } }
+  | { status: number; body: { ok: true; assist: ReturnType<typeof generateSmartAssistPreview> } }
   | {
       status: number
       body: {
@@ -104,6 +114,27 @@ function parseBody(body: unknown): TripOverrideRequestBody | null {
 
   if (action === 'history') {
     return { action, tripSlug, pin }
+  }
+
+  if (action === 'assistPreview') {
+    const assistAction = asString(body.assistAction)
+    if (
+      assistAction !== 'fill-missing' &&
+      assistAction !== 'improve-itinerary' &&
+      assistAction !== 'booking-reminders' &&
+      assistAction !== 'packing-checklist' &&
+      assistAction !== 'looser-day' &&
+      assistAction !== 'tighter-day'
+    ) {
+      return null
+    }
+    return {
+      action,
+      tripSlug,
+      pin,
+      assistAction,
+      note: body.note,
+    }
   }
 
   return null
@@ -180,6 +211,22 @@ export async function runTripOverrideAction(
   if (body.action === 'history') {
     const history = await store.getHistory(body.tripSlug)
     return { status: 200, body: { ok: true, history } }
+  }
+
+  if (body.action === 'assistPreview') {
+    const assist = generateSmartAssistPreview(baseTrip, body.assistAction, asString(body.note) ?? '')
+    const validationErrors = validateEditableTrip(baseTrip, assist.data)
+    if (validationErrors.length > 0) {
+      return {
+        status: 400,
+        body: {
+          ok: false,
+          error: 'Smart Assist preview is not valid for this trip.',
+          validationErrors: validationErrors.map(({ path, message }) => ({ path, message })),
+        },
+      }
+    }
+    return { status: 200, body: { ok: true, assist } }
   }
 
   if (body.action === 'restore') {

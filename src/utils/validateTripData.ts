@@ -93,6 +93,16 @@ function validatePeople(errors: TripDataValidationError[], tripSlug: string, peo
   }
 }
 
+function validatePlannerSources(errors: TripDataValidationError[], trip: Trip) {
+  const sources = trip.planner?.sourceRefs ?? []
+  const seen = new Set<string>()
+  for (const source of sources) {
+    if (seen.has(source.id)) addError(errors, trip.slug, 'planner.sourceRefs', `Duplicate source id "${source.id}".`)
+    seen.add(source.id)
+    validateUrl(errors, trip.slug, `planner.sourceRefs.${source.id}.url`, source.url)
+  }
+}
+
 function validatePackableIds(
   errors: TripDataValidationError[],
   tripSlug: string,
@@ -136,6 +146,7 @@ export function validateTripData(trips: Trip[]): TripDataValidationError[] {
     validateActivityLinks(errors, trip.slug, trip.thingsToDo)
     validateContacts(errors, trip.slug, trip.contacts)
     validatePeople(errors, trip.slug, trip.people)
+    validatePlannerSources(errors, trip)
   }
 
   return errors

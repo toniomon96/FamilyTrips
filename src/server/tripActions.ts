@@ -5,8 +5,10 @@ import { editableFieldsFromTrip, tripVisibilityFromData } from '../utils/tripOve
 import {
   generateSmartTrip,
   normalizeTripGenerationBrief,
+  scorePlanBrief,
   type TripAiPlanner,
   type TripGenerationSummary,
+  type TripResearcher,
 } from '../utils/tripGeneration.js'
 import { validateTripForSave } from '../utils/tripShell.js'
 
@@ -24,13 +26,25 @@ type GenerateBody = {
   createdBy?: unknown
 }
 
+type BriefQuestionsBody = {
+  action: 'briefQuestions'
+  pin: string
+  brief: unknown
+}
+
+type PreviewBody = {
+  action: 'preview'
+  pin: string
+  brief: unknown
+}
+
 type DeleteUatBody = {
   action: 'deleteUat'
   pin: string
   tripSlug: string
 }
 
-type TripActionBody = CreateBody | GenerateBody | DeleteUatBody
+type TripActionBody = CreateBody | GenerateBody | BriefQuestionsBody | PreviewBody | DeleteUatBody
 
 export type TripCreateStore = {
   getCurrent: (tripSlug: string) => Promise<TripOverrideRow | null>
@@ -41,6 +55,8 @@ export type TripCreateStore = {
 
 export type TripCreateActionResult =
   | { status: number; body: { ok: true; trip: Trip; row: TripOverrideRow; generationSummary?: TripGenerationSummary } }
+  | { status: number; body: { ok: true; trip: Trip; generationSummary: TripGenerationSummary } }
+  | { status: number; body: { ok: true; quality: ReturnType<typeof scorePlanBrief> } }
   | { status: number; body: { ok: true; deleted: true; tripSlug: string } }
   | {
       status: number
@@ -55,6 +71,7 @@ type RunOptions = {
   adminPin?: string
   editorPin?: string
   aiPlanner?: TripAiPlanner
+  researcher?: TripResearcher
   pinMatches?: (submitted: string, expected: string) => boolean
 }
 
@@ -84,6 +101,20 @@ function parseBody(body: unknown): TripActionBody | null {
       pin,
       brief: body.brief,
       createdBy: body.createdBy,
+    }
+  }
+  if (body.action === 'briefQuestions') {
+    return {
+      action: 'briefQuestions',
+      pin,
+      brief: body.brief,
+    }
+  }
+  if (body.action === 'preview') {
+    return {
+      action: 'preview',
+      pin,
+      brief: body.brief,
     }
   }
   if (body.action === 'deleteUat') {
@@ -195,6 +226,43 @@ export async function runTripCreateAction(
     return { status: 200, body: { ok: true, deleted: true, tripSlug: body.tripSlug } }
   }
 
+  if (body.action === 'briefQuestions') {
+    const normalized = normalizeTripGenerationBrief(body.brief)
+    if (!normalized.ok) {
+      return {
+        status: 400,
+        body: {
+          ok: false,
+          error: 'Trip details need attention before questions can be generated.',
+          validationErrors: normalized.validationErrors,
+        },
+      }
+    }
+    return { status: 200, body: { ok: true, quality: scorePlanBrief(normalized.brief) } }
+  }
+
+  if (body.action === 'preview') {
+    const normalized = normalizeTripGenerationBrief(body.brief)
+    if (!normalized.ok) {
+      return {
+        status: 400,
+        body: {
+          ok: false,
+          error: 'Trip needs attention before it can be previewed.',
+          validationErrors: normalized.validationErrors,
+        },
+      }
+    }
+    if (getTrip(normalized.brief.slug) || (await store.getCurrent(normalized.brief.slug))) {
+      return requestError(409, 'A trip with this URL already exists.')
+    }
+    const generated = await generateSmartTrip(normalized.brief, {
+      aiPlanner: options.aiPlanner,
+      researcher: options.researcher,
+    })
+    return { status: 200, body: { ok: true, trip: generated.trip, generationSummary: generated.generationSummary } }
+  }
+
   if (body.action === 'generate') {
     const normalized = normalizeTripGenerationBrief(body.brief)
     if (!normalized.ok) {
@@ -210,7 +278,10 @@ export async function runTripCreateAction(
     if (getTrip(normalized.brief.slug) || (await store.getCurrent(normalized.brief.slug))) {
       return requestError(409, 'A trip with this URL already exists.')
     }
-    const generated = await generateSmartTrip(normalized.brief, { aiPlanner: options.aiPlanner })
+    const generated = await generateSmartTrip(normalized.brief, {
+      aiPlanner: options.aiPlanner,
+      researcher: options.researcher,
+    })
     return writeDynamicTrip(generated.trip, body.createdBy || normalized.brief.createdBy, store, generated.generationSummary)
   }
 

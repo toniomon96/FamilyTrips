@@ -62,3 +62,13 @@ Durable notes for product decisions, open questions, and why the app changed. Ke
 - Retroactive direction: add Smart Assist on existing trips/events to fill gaps or improve sections through previewed changes saved to history.
 - Hotfix: public `/trips/new` examples should be neutral. Logan and Morgan remain a UAT/pilot case, not the public default example.
 - Spec: see `docs/TRAVEL_COMMAND_CENTER_AUDIT.md`.
+
+## 2026-05-14 - Travel Command Center Quality Vertical
+
+- Ask: implement the first serious rebuild pass as a quality vertical, not a big-bang rewrite.
+- Decision: `/trips/new` is now a compact wizard with start, progressive details, smart questions, and review-before-accept. The blank shell path stays available as a secondary mode.
+- Intelligence posture: trip/event generation uses rich `PlanBrief` normalization, brief scoring, structured must-do anchors, curated packs, deterministic fallback, and optional server-side OpenAI Responses API web search.
+- Data posture: planner metadata, source refs, warnings, statuses, `why`, and `nextStep` fields live inside the existing trip JSON stored in `trip_overrides.data`; no new tables were added.
+- Event posture: the same create flow can generate event-native drafts with run-of-show, tasks, supplies, food, setup/cleanup, budget, and reminders.
+- Retroactive posture: manage pages now expose Smart Assist previews for existing trips. Applying a preview uses the normal save path so version history remains the audit trail.
+- UX posture: source/confidence notes are visible on generated public trip pages, and browser dictation is a progressive enhancement for the big context field.
